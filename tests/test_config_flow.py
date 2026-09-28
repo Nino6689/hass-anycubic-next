@@ -259,6 +259,29 @@ async def test_reconfigure_errors_and_other_printer(
     await hass.async_block_till_done(wait_background_tasks=True)
 
 
+async def test_reconfigure_entry_without_mac_checks_the_printer(
+    hass: HomeAssistant, printer: MockPrinter
+) -> None:
+    """A ``lan-<host>`` entry is matched by its printer id instead."""
+    printer.info = payloads.connection_info(usn=None)
+    entry = await setup_entry(hass, lan_entry(unique_id=f"lan-{payloads.HOST}"))
+    result = await _reconfigure(hass, entry)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "connection"}
+    )
+    printer.info = payloads.connection_info(usn=None, device_id="otherprinter")
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"lan_mode_enabled": True, "lan_host": NEW_HOST}
+    )
+    assert result["errors"] == {"base": "lan_different_printer"}
+    printer.info = payloads.connection_info(usn=None)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"lan_mode_enabled": True, "lan_host": NEW_HOST}
+    )
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done(wait_background_tasks=True)
+
+
 async def test_reconfigure_cloud_entry(
     hass: HomeAssistant, printer: MockPrinter
 ) -> None:

@@ -141,6 +141,19 @@ async def test_lan_actions(
     assert printer.client.commands[-1][2] == {
         "multi_color_box": [{"id": 0, "feed_status": {"slot_index": 2, "type": 3}}]
     }
+    sent = len(printer.client.commands)
+    await _call(
+        hass,
+        "multi_color_box_set_slot_pla",
+        target
+        | {
+            "slot_number": 0,
+            "slot_color_red": 1,
+            "slot_color_green": 2,
+            "slot_color_blue": 3,
+        },
+    )
+    assert len(printer.client.commands) == sent
     await _call(hass, "multi_color_box_filament_extrude", target | {"slot_number": 3})
     assert (
         printer.client.commands[-1][2]["multi_color_box"][0]["feed_status"]["type"] == 1

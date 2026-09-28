@@ -71,6 +71,8 @@ async def async_register_frontend(hass: HomeAssistant, entry: ConfigEntry) -> No
     card_hash, panel_file = bundles
     state: dict[str, Any] = hass.data.setdefault(_DATA, {})
     if not state.get("static"):
+        # Claimed before the await so concurrent setups do not both register;
+        # released again if registration fails, so a later entry retries.
         state["static"] = True
         try:
             await hass.http.async_register_static_paths(
@@ -79,7 +81,11 @@ async def async_register_frontend(hass: HomeAssistant, entry: ConfigEntry) -> No
         except RuntimeError:
             # Registered by a concurrent setup: fine if it is being served.
             if not _static_path_served(hass):
+                state["static"] = False
                 raise
+        except BaseException:
+            state["static"] = False
+            raise
         frontend.add_extra_js_url(hass, f"{STATIC_PREFIX}/{CARD_FILE}?v={card_hash}")
     if PANEL_URL_PATH in hass.data.get(frontend.DATA_PANELS, {}):
         return

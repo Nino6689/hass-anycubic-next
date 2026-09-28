@@ -31,7 +31,11 @@ if TYPE_CHECKING:
 _LOGGER = logging.getLogger(__name__)
 
 # The printer's device id appears in every topic; logs never show it (§5.9).
-_TOPIC_DEVICE = re.compile(r"/[0-9A-Za-z]{16,}(?=/|$)")
+# It is the segment after the model id: ``.../printer/public/<model>/<id>/...``
+# (reports) or ``.../web/printer/<model>/<id>/...`` (orders).
+_TOPIC_DEVICE = re.compile(r"(/printer/(?:public/)?[^/]+/)[^/]+")
+# The signed upload URL authorises uploads to the printer (anycubic-lan HW4).
+_SIGNED_UPLOAD = re.compile(rb"[^\s\"']*gcode_upload\?s=[^\s\"']*")
 
 type ReportCallback = Callable[[Report], None]
 
@@ -44,7 +48,12 @@ class ExtraKind(StrEnum):
 
 def redact_topic(topic: str) -> str:
     """Hide the printer's device id in a topic."""
-    return _TOPIC_DEVICE.sub("/**REDACTED**", topic)
+    return _TOPIC_DEVICE.sub(r"\1**REDACTED**", topic)
+
+
+def redact_payload(payload: bytes) -> bytes:
+    """Hide the signed upload URL in a raw message before it is logged."""
+    return _SIGNED_UPLOAD.sub(b"**REDACTED**", payload)
 
 
 class IntegrationLanClient(AnycubicLanClient):
@@ -69,7 +78,11 @@ class IntegrationLanClient(AnycubicLanClient):
 
     def _handle_message(self, topic: str, payload: bytes) -> None:
         if self._debug_messages:
-            _LOGGER.debug("LAN message on %s: %s", redact_topic(topic), payload[:2000])
+            _LOGGER.debug(
+                "LAN message on %s: %s",
+                redact_topic(topic),
+                redact_payload(payload)[:2000],
+            )
         report = parse_message(payload, topic)
         if report is not None:
             try:

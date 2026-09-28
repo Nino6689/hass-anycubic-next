@@ -109,12 +109,17 @@ async def async_home_all(coordinator: AnycubicCoordinator) -> None:
     printer = _printer(coordinator)
     _refuse_while_printing(printer)
     await _send(coordinator.link.async_move_axis(AXIS_XY, MOVE_HOME, 0))
+    # Forget the previous move's state: only a report for this homing ("done"
+    # or "failed") ends the wait, not a "done" left over from an earlier jog.
+    printer.axis_move_state = "sent"
     loop = asyncio.get_running_loop()
     deadline = loop.time() + HOME_ALL_TIMEOUT
     while loop.time() < deadline:
         await asyncio.sleep(HOME_ALL_POLL)
         if not printer.is_moving and printer.work_status != WORK_BUSY:
             break
+    if printer.axis_move_state == "sent":
+        printer.axis_move_state = None  # the printer never reported the move
     await _send_and_refresh(
         coordinator, coordinator.link.async_move_axis(AXIS_Z, MOVE_HOME, 0)
     )
@@ -258,7 +263,12 @@ async def async_set_slot(
     material: str,
     color: list[int],
 ) -> None:
-    """Tell the ACE what is in a slot (§4.2); no ACE or job precondition."""
+    """Tell the ACE what is in a slot (§4.2); no ACE or job precondition.
+
+    Slot 0 would become index -1: nothing is sent, as for a feed (§4.3).
+    """
+    if slot_index < 0:
+        return
     await _send_and_refresh(
         coordinator,
         coordinator.link.async_ace_set_slot(box, slot_index, material, color),

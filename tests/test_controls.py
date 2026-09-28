@@ -179,6 +179,36 @@ async def test_home_all_gives_up_after_the_timeout(
     )
 
 
+async def test_home_all_ignores_a_stale_done(
+    hass: HomeAssistant,
+    loaded: MockConfigEntry,
+    printer: MockPrinter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A "done" left from an earlier jog does not end the wait."""
+    monkeypatch.setattr("custom_components.anycubic_cloud.control.HOME_ALL_POLL", 0)
+    monkeypatch.setattr(
+        "custom_components.anycubic_cloud.control.HOME_ALL_TIMEOUT", 0.05
+    )
+    printer.client.feed(payloads.axis_move("done"))
+    import asyncio
+
+    polls = 0
+    real_sleep = asyncio.sleep
+
+    async def fake_sleep(delay: float) -> None:
+        nonlocal polls
+        polls += 1
+        await real_sleep(0.01)
+
+    monkeypatch.setattr(
+        "custom_components.anycubic_cloud.control.asyncio.sleep", fake_sleep
+    )
+    await _press(hass, f"button.{P}_home_all_axes")
+    assert polls > 1
+    assert loaded.runtime_data.printer.axis_move_state is None
+
+
 async def test_ace_buttons(
     hass: HomeAssistant, loaded: MockConfigEntry, printer: MockPrinter
 ) -> None:

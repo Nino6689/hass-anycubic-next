@@ -267,12 +267,20 @@ class AnycubicConfigFlow(ConfigFlow, domain=DOMAIN):
     def _same_printer(
         entry: ConfigEntry, info: PrinterConnectionInfo, host: str
     ) -> bool:
-        """A LAN-only entry keyed by MAC must keep talking to that printer."""
-        if is_cloud_entry(entry) or not entry.unique_id or not info.mac:
+        """A LAN-only entry must keep talking to the printer it was set up for.
+
+        Checked by MAC when the entry is keyed by one, else by the printer id
+        derived from the broker's device id (COMPAT §2).
+        """
+        if is_cloud_entry(entry):
             return True
-        if entry.unique_id.startswith("lan-"):
-            return True
-        return entry.unique_id == entry_unique_id_for_lan(info.mac, host)
+        unique_id = entry.unique_id or ""
+        if unique_id and not unique_id.startswith("lan-") and info.mac:
+            return unique_id == entry_unique_id_for_lan(info.mac, host)
+        printer_ids = entry.data.get(CONF_PRINTER_IDS) or []
+        if printer_ids:
+            return lan_printer_id(info.device_id) == int(printer_ids[0])
+        return True
 
 
 def _card_value_ok(key: str, item: object) -> bool:

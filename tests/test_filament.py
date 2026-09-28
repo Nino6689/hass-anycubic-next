@@ -25,7 +25,7 @@ from custom_components.anycubic_cloud.identity import (
     entry_unique_id_for_lan,
     unique_id_mac,
 )
-from custom_components.anycubic_cloud.lan import redact_topic
+from custom_components.anycubic_cloud.lan import redact_payload, redact_topic
 from custom_components.anycubic_cloud.model import (
     ace_model_name,
     material_type_from_device_type,
@@ -141,6 +141,22 @@ def test_redact_topic() -> None:
     )
     assert "372d9445" not in redact_topic(topic)
     assert redact_topic(topic).endswith("/**REDACTED**/info/report")
+
+
+def test_redact_short_numeric_device_id() -> None:
+    """A 15-digit device id is hidden too, in report and order topics."""
+    for topic in (
+        "anycubic/anycubicCloud/v1/printer/public/20025/123456789012345/info/report",
+        "anycubic/anycubicCloud/v1/web/printer/20025/123456789012345/light",
+    ):
+        assert "123456789012345" not in redact_topic(topic)
+        assert "20025/**REDACTED**/" in redact_topic(topic)
+
+
+def test_redact_payload() -> None:
+    raw = b'{"urls": {"fileUploadurl": "http://h:18910/gcode_upload?s=SECRET"}}'
+    assert b"SECRET" not in redact_payload(raw)
+    assert redact_payload(b'{"a": 1}') == b'{"a": 1}'
 
 
 def test_spool_picture() -> None:

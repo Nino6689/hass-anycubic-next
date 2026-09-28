@@ -32,9 +32,12 @@ def test_client_passes_reports_on(caplog: pytest.LogCaptureFixture) -> None:
     assert seen[0].envelope.action == "move"
     assert seen[0].envelope.state == "doing"
     assert payloads.DEVICE_ID not in caplog.text
+    client._handle_message(topic, json.dumps(payloads.info()).encode())
+    assert "gcode_upload?s=" not in caplog.text
+    assert "SIGNEDSECRET" not in caplog.text
     # Nothing to report for an empty message; a failing callback is contained.
     client._handle_message(topic, b'{"msgid": ""}')
-    assert len(seen) == 1
+    assert len(seen) == 2
     broken = IntegrationLanClient(
         payloads.connection_info(),
         report_callback=MagicMock(side_effect=RuntimeError),

@@ -117,6 +117,19 @@ async def test_registration_races(hass: HomeAssistant, bundles: Path) -> None:
         pytest.raises(RuntimeError),
     ):
         await panel.async_register_frontend(hass, entry)
+    # A failed registration is retried by the next entry.
+    assert not hass.data[panel._DATA]["static"]
+    with (
+        patch.object(panel, "WWW", bundles),
+        patch.object(
+            hass.http,
+            "async_register_static_paths",
+            AsyncMock(side_effect=OSError("disk")),
+        ),
+        pytest.raises(OSError, match="disk"),
+    ):
+        await panel.async_register_frontend(hass, entry)
+    assert not hass.data[panel._DATA]["static"]
 
 
 async def test_no_bundles_shipped(hass: HomeAssistant, tmp_path: Path) -> None:
