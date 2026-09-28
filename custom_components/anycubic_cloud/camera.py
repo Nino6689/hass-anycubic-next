@@ -214,8 +214,8 @@ class CloudCamera(AnycubicEntity, Camera):
         except AnycubicCloudError as err:
             send_message(WebRTCError("cloud_error", str(err)))
             return
-        # The key an encrypted channel needs is not available to this
-        # integration (E2-Q1 in docs/QUESTIONS.md); unencrypted channels work.
+        # No key is passed: the library supplies Agora's public SDK key for
+        # encrypted channels itself (its acceptance L3; ours X3).
         session = AgoraCameraSession(
             async_get_clientsession(self.hass),
             credentials,
