@@ -1,5 +1,6 @@
 // Shared derivations (FRONTEND.md §4.1).
 
+import type { HassEntity } from "../ha/types";
 import { isNoValue, type Printer } from "./entities";
 
 export const PRINTING_STATES = ["printing", "preheating", "paused", "downloading", "checking"];
@@ -23,6 +24,19 @@ export function printState(p: Printer): string {
     p.entity("printer_online", "binary_sensor")?.state,
     p.entity("current_status")?.state,
   );
+}
+
+/**
+ * The entity a print state was read from (`job_state` or `current_status`), so
+ * Home Assistant can translate it; undefined for the derived `offline` and
+ * `unknown`.
+ */
+export function stateSource(p: Printer, state: string): HassEntity | undefined {
+  for (const key of ["job_state", "current_status"]) {
+    const e = p.entity(key);
+    if (e && !isNoValue(e.state) && e.state.toLowerCase() === state) return e;
+  }
+  return undefined;
 }
 
 /** The `Status` stat: like the print state, but never `offline`. */

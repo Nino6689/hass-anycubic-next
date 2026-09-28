@@ -39,8 +39,8 @@ import {
   formatTemperature,
   parseDurationSeconds,
 } from "../lib/format";
-import { isPaused, isPrinting, isRunning, printState, statusCategory, statusStat } from "../lib/state";
-import { localize, stateWord } from "../localize";
+import { isPaused, isPrinting, isRunning, printState, stateSource, statusCategory, statusStat } from "../lib/state";
+import { entityStateWord, localize } from "../localize";
 import { icon } from "../ui/icon";
 import { sharedStyles } from "../ui/styles";
 import "./dialogs";
@@ -193,17 +193,18 @@ export class AnycubicCard extends LitElement {
   private statValue(stat: string): TemplateResult | string {
     const p = this.printer;
     const c = this.config;
-    const lang = this.hass?.language;
     switch (stat) {
-      case "Status":
-        return stateWord(lang, statusStat(p));
+      case "Status": {
+        const s = statusStat(p);
+        return entityStateWord(this.hass, stateSource(p, s), s);
+      }
       case "Online": {
         const on = p.isOn("printer_online");
         return on === undefined ? NO_VALUE : this.t(on ? "common.values.online" : "common.values.offline");
       }
       case "Availability": {
         const s = p.value("current_status");
-        return s === undefined ? NO_VALUE : stateWord(lang, s);
+        return s === undefined ? NO_VALUE : entityStateWord(this.hass, p.entity("current_status"), s);
       }
       case "Project":
         return this.plain("job_name");
@@ -323,7 +324,7 @@ export class AnycubicCard extends LitElement {
         <span class="dot"></span>
         <span class="names">
           <span class="name">${this.printer.name ?? this.t("card.fallback_name")}</span>
-          <span class="state">${stateWord(this.hass?.language, state)}</span>
+          <span class="state">${entityStateWord(this.hass, stateSource(this.printer, state), state)}</span>
         </span>
       </button>
       ${c.lightEntityId

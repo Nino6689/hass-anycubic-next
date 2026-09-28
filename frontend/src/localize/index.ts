@@ -1,6 +1,7 @@
 // String lookup (FRONTEND.md §5.2): exact language, then its base language,
 // then English, per key. `{name}` placeholders are filled from `vars`.
 
+import type { HassEntity, HomeAssistant } from "../ha/types";
 import { titleCase } from "../lib/format";
 import de from "./languages/de.json";
 import en from "./languages/en.json";
@@ -74,4 +75,26 @@ export function stateWord(language: string | undefined, state: string | undefine
   const known = tryLocalize(language, `common.states.${state.toLowerCase()}`);
   if (known) return known;
   return titleCase(state);
+}
+
+/**
+ * A state word, preferring Home Assistant's own translation of the entity's
+ * state (DECISIONS round 2, F4). Home Assistant returns the raw state when it
+ * has no translation; then, and for derived states with no entity, our own
+ * strings are used.
+ */
+export function entityStateWord(
+  hass: Pick<HomeAssistant, "language" | "formatEntityState"> | undefined,
+  entity: HassEntity | undefined,
+  state: string | undefined,
+): string {
+  if (hass?.formatEntityState && entity && state && entity.state.toLowerCase() === state.toLowerCase()) {
+    try {
+      const text = hass.formatEntityState(entity);
+      if (text && text !== entity.state) return text;
+    } catch {
+      // fall through to our own strings
+    }
+  }
+  return stateWord(hass?.language, state);
 }

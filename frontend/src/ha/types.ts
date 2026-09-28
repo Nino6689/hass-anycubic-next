@@ -59,6 +59,8 @@ export interface HomeAssistant {
     target?: Record<string, unknown>,
   ): Promise<unknown>;
   fetchWithAuth?(path: string, init?: RequestInit): Promise<Response>;
+  /** The entity's state as Home Assistant shows it, translated (2023.9+). */
+  formatEntityState?(stateObj: HassEntity, state?: string): string;
 }
 
 export interface PanelInfo<C = Record<string, unknown>> {
