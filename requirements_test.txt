@@ -1,7 +1,7 @@
 # Test and lint dependencies (CI and local development).
 anycubic-lan==0.1.0
-# anycubic-cloud-client 0.1.0 is not on PyPI yet: its release branch until it is.
-anycubic-cloud-client @ git+https://github.com/Nino6689/anycubic-cloud-client@clean/implementation-v0.1.0
+# anycubic-cloud-client is not on PyPI yet: its main branch until it is.
+anycubic-cloud-client @ git+https://github.com/Nino6689/anycubic-cloud-client@main
 # The Anycubic app credentials package (CLOUD.md §1) is never installed for
 # tests: the loader is mocked.
 # Releases after 0.13.316 (Home Assistant 2026.3+) require Python 3.14; on
