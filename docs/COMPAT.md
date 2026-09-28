@@ -249,6 +249,98 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 
 Per-slot and per-preset families (slot N = 1–4, preset N = 1–4, prefix `secondary_` for the second ACE): `ace_slot_N`, `ace_slot_N_filament_remaining`, `ace_slot_N_filament_remaining_percent`, `ace_slot_N_reset_spool`, `ace_slot_N_feed`, `ace_slot_N_spool_weight`, `ace_slot_N_spool_price`, `drying_start_preset_N`; axis jog buttons `axis_move_<axis>_<direction>` — see 3.1 for the exact members observed.
 
+### 3.3 Icons
+
+Icon per entity (Material Design Icons names), with per-state icons where the icon changes with the state. Entities not listed use their device class's default icon.
+
+| Key | Platform | Icon | Per-state icons |
+|---|---|---|---|
+| `ace_current_temperature` | sensor | `mdi:thermometer` |  |
+| `ace_loaded_slot` | sensor | `mdi:tray-arrow-up` |  |
+| `ace_refresh_spools` | button | `mdi:refresh` |  |
+| `ace_slot_1` | sensor | `mdi:circle-slice-8` |  |
+| `ace_slot_2` | sensor | `mdi:circle-slice-8` |  |
+| `ace_slot_3` | sensor | `mdi:circle-slice-8` |  |
+| `ace_slot_4` | sensor | `mdi:circle-slice-8` |  |
+| `ace_spools` | sensor | `mdi:printer-3d-nozzle` |  |
+| `aux_fan_speed_pct` | sensor | `mdi:fan-auto` |  |
+| `box_fan_level` | sensor | `mdi:fan-chevron-up` |  |
+| `cancel_print` | button | `mdi:stop` |  |
+| `curr_hotbed_temp` | sensor | `mdi:heating-coil` |  |
+| `curr_nozzle_temp` | sensor | `mdi:printer-3d-nozzle-heat` |  |
+| `current_status` | sensor | `mdi:printer-3d` |  |
+| `dry_status_is_drying` | binary_sensor | `mdi:air-filter` |  |
+| `dry_status_remaining_time` | sensor | `mdi:timer-sand` |  |
+| `dry_status_target_temperature` | sensor | `mdi:thermometer` |  |
+| `dry_status_total_duration` | sensor | `mdi:timer-outline` |  |
+| `drying_start_preset_1` | button | `mdi:air-filter` |  |
+| `drying_start_preset_2` | button | `mdi:air-filter` |  |
+| `drying_start_preset_3` | button | `mdi:air-filter` |  |
+| `drying_start_preset_4` | button | `mdi:air-filter` |  |
+| `drying_stop` | button | `mdi:stop-circle-outline` |  |
+| `fan_speed_pct` | sensor | `mdi:fan` |  |
+| `file_list_cloud` | sensor | `mdi:cloud-outline` |  |
+| `file_list_local` | sensor | `mdi:folder` |  |
+| `file_list_udisk` | sensor | `mdi:usb-flash-drive` |  |
+| `is_available` | binary_sensor | `mdi:check-circle-outline` |  |
+| `is_busy` | binary_sensor | `mdi:progress-wrench` |  |
+| `job_anti_alias_count` | sensor | `mdi:blur` |  |
+| `job_bottom_layers` | sensor | `mdi:layers-outline` |  |
+| `job_bottom_time` | sensor | `mdi:timer-outline` |  |
+| `job_complete` | binary_sensor | `mdi:check-bold` |  |
+| `job_current_layer` | sensor | `mdi:layers` |  |
+| `job_eta` | sensor | `mdi:clock-end` |  |
+| `job_failed` | binary_sensor | `mdi:alert-circle-outline` |  |
+| `job_filament_used` | sensor | `mdi:tape-measure` |  |
+| `job_image_url` | image | `mdi:image` |  |
+| `job_in_progress` | binary_sensor | `mdi:printer-3d-nozzle` |  |
+| `job_is_paused` | binary_sensor | `mdi:pause-circle-outline` |  |
+| `job_model_height` | sensor | `mdi:arrow-expand-vertical` |  |
+| `job_name` | sensor | `mdi:file-document-outline` |  |
+| `job_off_time` | sensor | `mdi:timer-off` |  |
+| `job_on_time` | sensor | `mdi:timer-play` |  |
+| `job_progress` | sensor | `mdi:progress-clock` |  |
+| `job_speed_mode` | sensor | `mdi:speedometer-medium` |  |
+| `job_state` | sensor | `mdi:list-status` |  |
+| `job_time_elapsed` | sensor | `mdi:timer-play-outline` |  |
+| `job_time_remaining` | sensor | `mdi:timer-sand` |  |
+| `job_total_layers` | sensor | `mdi:layers-triple` |  |
+| `job_z_down_speed` | sensor | `mdi:arrow-down-bold` |  |
+| `job_z_thick` | sensor | `mdi:arrow-collapse-vertical` |  |
+| `job_z_up_height` | sensor | `mdi:arrow-up` |  |
+| `job_z_up_speed` | sensor | `mdi:arrow-up-bold` |  |
+| `last_error_code` | sensor | `mdi:alert-circle-outline` |  |
+| `last_error` | sensor | `mdi:alert-circle-outline` |  |
+| `manual_mqtt_connection_enabled` | switch | `mdi:transit-connection-variant` |  |
+| `material_used_total` | sensor | `mdi:weight-kilogram` |  |
+| `mqtt_connection_active` | binary_sensor | `mdi:transit-connection-variant` |  |
+| `multi_color_box_runout_refill` | switch | `mdi:autorenew` |  |
+| `pause_print` | button | `mdi:pause` |  |
+| `print_count_total` | sensor | `mdi:counter` |  |
+| `print_speed_pct` | sensor | `mdi:speedometer` |  |
+| `print_time_total_hrs` | sensor | `mdi:clock-outline` |  |
+| `printer_light` | light | `mdi:lightbulb` |  |
+| `printer_online` | binary_sensor | `mdi:printer-3d` |  |
+| `refresh_mqtt_connection` | button | `mdi:connection` |  |
+| `request_file_list_cloud` | button | `mdi:cloud-search` |  |
+| `request_file_list_local` | button | `mdi:folder-search` |  |
+| `request_file_list_udisk` | button | `mdi:usb-flash-drive` |  |
+| `resume_print` | button | `mdi:play` |  |
+| `secondary_ace_current_temperature` | sensor | `mdi:thermometer` |  |
+| `secondary_ace_spools` | sensor | `mdi:printer-3d-nozzle` |  |
+| `secondary_dry_status_is_drying` | binary_sensor | `mdi:air-filter` |  |
+| `secondary_dry_status_remaining_time` | sensor | `mdi:timer-sand` |  |
+| `secondary_dry_status_target_temperature` | sensor | `mdi:thermometer` |  |
+| `secondary_dry_status_total_duration` | sensor | `mdi:timer-outline` |  |
+| `secondary_drying_start_preset_1` | button | `mdi:air-filter` |  |
+| `secondary_drying_start_preset_2` | button | `mdi:air-filter` |  |
+| `secondary_drying_start_preset_3` | button | `mdi:air-filter` |  |
+| `secondary_drying_start_preset_4` | button | `mdi:air-filter` |  |
+| `secondary_drying_stop` | button | `mdi:stop-circle-outline` |  |
+| `secondary_multi_color_box_runout_refill` | switch | `mdi:autorenew` |  |
+| `target_hotbed_temp` | sensor | `mdi:heating-coil` |  |
+| `target_nozzle_temp` | sensor | `mdi:printer-3d-nozzle-heat-outline` |  |
+
 ## 4. Actions (services)
 
 Every action takes `config_entry` (**required**) plus one of `device_id` or `printer_id` to pick the printer (BEHAVIOUR.md §4.1).
