@@ -19,8 +19,9 @@ Facts a 3.0 release must reproduce so that an update from 2.x is seamless: nobod
 | `user_token` | str | the Anycubic access token the user pasted (absent on LAN-only entries) |
 | `user_auth_mode` | int | which kind of token it is (web, slicer, Android — see §7) |
 | `user_device_id` | str or null | device id, only needed for Android tokens |
-| `region` | str | Anycubic cloud region (`global` / China) |
+| `region` | str | Anycubic cloud region: `international` or `china`; absent (older and LAN-only entries) means `international` |
 | `printer_ids` | list[int] | the printers this entry covers |
+| `lan_host` | str | LAN-only entries only: the printer address given at setup (the connection itself reads `options.lan_host`) |
 
 ### Config entry `options`
 
@@ -250,7 +251,7 @@ Per-slot and per-preset families (slot N = 1–4, preset N = 1–4, prefix `seco
 
 ## 4. Actions (services)
 
-Every action takes one of `config_entry`, `device_id` or `printer_id` to pick the printer.
+Every action takes `config_entry` (**required**) plus one of `device_id` or `printer_id` to pick the printer (BEHAVIOUR.md §4.1).
 
 | Action | Fields (besides the printer selector) |
 |---|---|
@@ -282,13 +283,13 @@ Every action takes one of `config_entry`, `device_id` or `printer_id` to pick th
 | `anycubic_cloud.change_print_off_time` | `time`* |
 | `anycubic_cloud.change_print_on_time` | `time`* |
 
-`*` = required. Field selectors and ranges: see §4.1 (open question C2 — to be filled from the published action descriptions).
+`*` = required. Field types, selectors, ranges, preconditions and errors: BEHAVIOUR.md §4 (answers C2).
 
 ## 5. Events and repairs
 
 | Kind | Id | When |
 |---|---|---|
-| Event | event type **`anycubic_cloud`**, data `{type: "print_cloud_start", event_data: {…the order's result…}}` | after a print is started from the cloud via an action |
+| Event | event type **`anycubic_cloud`**, data `{printer_id, printer_name, device_id, type: "print_cloud_start", event_data: {…the order's result…}}` (keys in BEHAVIOUR.md §4.8) | after a print is started from the cloud via an action |
 | Repair | `token_expiring_<entry id>` (translation key `token_expiring`) | the pasted token expires within 14 days; removed once renewed |
 | Repair / error | translation key `mqtt_connect_timeout` | the cloud MQTT connection could not be established |
 
@@ -325,6 +326,6 @@ Secrets: never logged, never in diagnostics. A legacy un-suffixed `anycubic_clou
 ## 7. Open questions for the specification team
 
 - ~~C1~~ — answered in §2.
-- **C2** — each action's field selectors and ranges.
-- **C3** — full meaning of every sensor and binary sensor (a behaviour spec, `BEHAVIOUR.md`, follows).
+- ~~C2~~ — answered in [`BEHAVIOUR.md`](BEHAVIOUR.md) §4 (every action's fields, selectors, ranges, preconditions, transports and errors).
+- ~~C3~~ — answered in [`BEHAVIOUR.md`](BEHAVIOUR.md) §1–§3 (meaning, source, transport and format of every entity key).
 
