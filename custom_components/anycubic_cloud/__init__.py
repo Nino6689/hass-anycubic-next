@@ -16,6 +16,7 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import CONF_LAN_HOST, CONF_LAN_MODE_ENABLED, DOMAIN
 from .coordinator import AnycubicConfigEntry, AnycubicCoordinator
+from .entity import async_register_printer_device
 from .identity import is_cloud_entry
 from .panel import async_register_frontend, async_unregister_frontend
 from .services import async_setup_services
@@ -80,6 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: AnycubicConfigEntry) -> 
     await coordinator.async_setup()
     entry.runtime_data = coordinator
     await coordinator.async_config_entry_first_refresh()
+    async_register_printer_device(coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

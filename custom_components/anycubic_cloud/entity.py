@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from homeassistant.core import callback
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import CONNECTION_NETWORK_MAC, DeviceInfo
 from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -22,6 +23,12 @@ if TYPE_CHECKING:
     from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
     from .model import Printer
+
+
+# Current Home Assistant links a device to its parent by the parent's registry
+# id and reports the older ``via_device`` identifier form as deprecated; the
+# oldest supported versions have only the identifier form.
+VIA_DEVICE_ID = "via_device_id" in DeviceInfo.__optional_keys__
 
 
 class Kind(StrEnum):
@@ -72,13 +79,31 @@ def device_info(coordinator: AnycubicCoordinator, device: Device) -> DeviceInfo:
     box = 0 if device is Device.ACE1 else 1
     model = printer.ace_model(box)
     name = f"{identity.name} {model}" if box == 0 else f"{identity.name} {model} 2"
-    return DeviceInfo(
+    info = DeviceInfo(
         identifiers={ace_identifier(entry, printer_id, box)},
         manufacturer=MANUFACTURER,
         model=model,
         name=name,
-        via_device=printer_identifier(entry, printer_id),
     )
+    link: dict[str, Any]
+    if not VIA_DEVICE_ID:
+        link = {"via_device": printer_identifier(entry, printer_id)}
+    elif coordinator.printer_device_id is not None:
+        link = {"via_device_id": coordinator.printer_device_id}
+    else:  # pragma: no cover - setup registers the printer before any entity
+        link = {}
+    info.update(cast("DeviceInfo", link))
+    return info
+
+
+@callback
+def async_register_printer_device(coordinator: AnycubicCoordinator) -> None:
+    """Register the printer's device, the parent its ACE units link to."""
+    device = dr.async_get(coordinator.hass).async_get_or_create(
+        config_entry_id=coordinator.config_entry.entry_id,
+        **device_info(coordinator, Device.PRINTER),
+    )
+    coordinator.printer_device_id = device.id
 
 
 class AnycubicEntity(CoordinatorEntity[AnycubicCoordinator]):

@@ -21,6 +21,7 @@ from homeassistant.helpers import (
     entity_registry as er,
     issue_registry as ir,
 )
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.anycubic_cloud.const import DOMAIN
@@ -158,6 +159,25 @@ async def test_lan_only_entry_identity(
     assert _state(hass, "sensor.anycubic_kobra_s1_nozzle_temperature") == "34.0"
     assert _state(hass, "sensor.anycubic_kobra_s1_ace_pro_ace_slot_1") == "PLA"
     assert _state(hass, "binary_sensor.anycubic_kobra_s1_axis_move_refused") == "off"
+
+
+async def test_ace_devices_link_without_deprecated_calls(
+    hass: HomeAssistant, printer: MockPrinter, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Both ACE units hang off the printer, and Home Assistant reports no
+    deprecated call from this integration during setup or unload (U3)."""
+    printer.connect_payloads[1] = payloads.ace(payloads.box(0), payloads.box(1))
+    entry = await setup_entry(hass, lan_entry())
+    device = find_device(hass, f"None-{PID}")
+    assert device is not None
+    for box in (0, 1):
+        ace = find_device(hass, f"None-{PID}-ace{box}")
+        assert ace is not None
+        assert ace.via_device_id == device.id
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert "Detected that custom integration 'anycubic_cloud'" not in caplog.text
+    assert "deprecated" not in caplog.text
 
 
 async def test_existing_registry_entries_are_reused(

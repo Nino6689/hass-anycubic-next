@@ -99,6 +99,8 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         # The job is only trusted once the current connection sent `info`.
         self._info_seen = asyncio.Event()
         self._push_pending = False
+        # The printer's device registry id, the parent of its ACE units.
+        self.printer_device_id: str | None = None
 
     # -- setup ---------------------------------------------------------------
 
