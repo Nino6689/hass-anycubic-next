@@ -16,6 +16,7 @@ from custom_components.anycubic_cloud import (
     sensor,
     switch,
 )
+from custom_components.anycubic_cloud.model import _JOB_STATE_TEXT
 from custom_components.anycubic_cloud.services import SERVICES
 
 ROOT = Path(__file__).parent.parent / "custom_components" / "anycubic_cloud"
@@ -79,3 +80,31 @@ def test_icons_reference_existing_entities() -> None:
         for key in keys:
             assert key in STRINGS["entity"][platform]
     assert set(icons["services"]) == set(SERVICES)
+
+
+def test_state_translations() -> None:
+    """Round 2, F4: every state BEHAVIOUR §2.1 and §2.3 list has an English word."""
+    sensors = STRINGS["entity"]["sensor"]
+    job_states = {
+        "printing",
+        "paused",
+        "finished",
+        "failed",
+        "downloading",
+        "checking",
+        "preheating",
+        "slicing",
+        "levelling",
+        "idle",
+        "unknown",
+    }
+    assert set(sensors["job_state"]["state"]) == job_states
+    assert set(_JOB_STATE_TEXT.values()) <= job_states
+    assert set(sensors["current_status"]["state"]) == {
+        "moving",
+        "busy",
+        "available",
+        "unknown",
+    }
+    for key in ("job_state", "current_status"):
+        assert all(sensors[key]["state"].values())
