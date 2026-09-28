@@ -424,6 +424,30 @@ async def test_hybrid_entry_several_printers_none_missing(
     assert runtime.coordinators[7].link is None
 
 
+async def test_hybrid_lan_address_of_another_printer_is_refused(
+    hass: HomeAssistant,
+    cloud: FakeCloud,
+    printer: MockPrinter,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The LAN address answers with another MAC than the cloud's: its reports
+    are never taken for this printer, which runs on the cloud."""
+    detail = cp.detail()
+    detail["base"]["machine_mac"] = "11-22-33-44-55-66"
+    cloud.printers[cp.PRINTER_ID] = detail
+    entry = await setup_entry(hass, account_entry(lan=True))
+    assert entry.state is ConfigEntryState.LOADED
+    coordinator = entry.runtime_data.primary
+    assert not coordinator.lan_connected
+    assert coordinator.uses_cloud
+    assert coordinator.printer.source == "cloud"
+    assert coordinator.printer.identity.mac == "11-22-33-44-55-66"
+    # The cloud's figures stand (LAN would report 34 °C for the nozzle).
+    assert coordinator.printer.state.temperatures.nozzle == 31
+    assert printer.handshakes >= 1
+    assert "is not printer" in caplog.text
+
+
 async def test_hybrid_entry_with_rejected_token_runs_on_lan(
     hass: HomeAssistant, cloud: FakeCloud, printer: MockPrinter
 ) -> None:

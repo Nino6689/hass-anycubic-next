@@ -56,7 +56,7 @@ from .const import (
     UPDATE_INTERVAL,
 )
 from .identity import NO_MAC, lan_printer_id, unique_id_mac
-from .lan import LanLink
+from .lan import LanLink, WrongPrinterError
 from .ledger import FilamentLedger, Forecast
 from .model import (
     CloudData,
@@ -290,6 +290,16 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         assert self.link is not None
         try:
             info = await self._async_connect_and_wait()
+        except WrongPrinterError:
+            # Only a printer built from the cloud expects a MAC: the address
+            # reaches another printer, whose reports must not be taken for
+            # this one. The link stays, so a later address change recovers.
+            _LOGGER.warning(
+                "LAN Mode address %s is not printer %s; using the cloud",
+                self.link.host,
+                self.printer.printer_id,
+            )
+            return
         except LanModeDisabledError as err:
             if self._printer is not None:
                 _LOGGER.debug("LAN Mode is off at the printer: %s", err)
@@ -331,7 +341,7 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         """Handshake, connect, then wait up to 20 s for an ``info`` report."""
         assert self.link is not None
         self._info_seen.clear()
-        info = await self.link.async_connect()
+        info = await self.link.async_connect(self._expected_mac())
         try:
             async with asyncio.timeout(LAN_INFO_TIMEOUT):
                 await self._info_seen.wait()
@@ -339,6 +349,14 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
             await self.link.async_disconnect()
             raise
         return info
+
+    def _expected_mac(self) -> str | None:
+        """The MAC the cloud reports for this printer, if it was built from it."""
+        printer = self._printer
+        if printer is None or printer.cloud is None:
+            return None
+        mac = printer.identity.mac
+        return None if mac == NO_MAC else mac
 
     def _build_identity(self, info: PrinterConnectionInfo) -> PrinterIdentity:
         assert self.link is not None

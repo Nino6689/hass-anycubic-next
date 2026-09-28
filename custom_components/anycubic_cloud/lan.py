@@ -17,6 +17,7 @@ import uuid
 
 from anycubic_lan import (
     AnycubicLanClient,
+    AnycubicLanError,
     NotConnectedError,
     PrinterConnectionInfo,
     PrinterState,
@@ -25,6 +26,8 @@ from anycubic_lan import (
     handshake,
     parse_message,
 )
+
+from .identity import unique_id_mac
 
 if TYPE_CHECKING:
     import aiohttp
@@ -44,6 +47,10 @@ TEMPERATURE_BOTH = 2
 _SIGNED_UPLOAD = re.compile(rb"[^\s\"']*gcode_upload\?s=[^\s\"']*")
 
 type ReportCallback = Callable[[Report], None]
+
+
+class WrongPrinterError(AnycubicLanError):
+    """The LAN Mode address reaches another printer than the one expected."""
 
 
 class ExtraKind(StrEnum):
@@ -150,11 +157,19 @@ class LanLink:
     def connected(self) -> bool:
         return self.client is not None and self.client.is_connected
 
-    async def async_connect(self) -> PrinterConnectionInfo:
+    async def async_connect(
+        self, expected_mac: str | None = None
+    ) -> PrinterConnectionInfo:
         """Run the full handshake and connect (§5.3; a fresh handshake every
-        time, since the printer rotates its credentials - G2)."""
+        time, since the printer rotates its credentials - G2).
+
+        With ``expected_mac`` (unique-id form), a handshake answered by a
+        printer with another MAC is refused before any report is read.
+        """
         await self.async_disconnect()
         info = await handshake(self._session, self.host)
+        if expected_mac and info.mac and unique_id_mac(info.mac) != expected_mac:
+            raise WrongPrinterError(f"{self.host} answers for another printer")
         client = IntegrationLanClient(
             info,
             report_callback=self._on_report,
