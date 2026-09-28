@@ -1,0 +1,327 @@
+{
+  "title": "Anycubic printers",
+  "common": {
+    "actions": {
+      "cancel": "cancel",
+      "pause": "pause",
+      "print": "Print",
+      "resume": "resume",
+      "yes": "Yes",
+      "no": "No",
+      "save": "Save",
+      "close": "Close",
+      "delete": "Delete",
+      "refresh": "Refresh"
+    },
+    "messages": {
+      "refresh_unavailable": "This list can't be fetched over the current connection, so refreshing is switched off.",
+      "no_printer": "No printer selected",
+      "page_not_found": "There's nothing at this address.",
+      "unknown": "Unknown"
+    },
+    "states": {
+      "printing": "Printing",
+      "paused": "Paused",
+      "finished": "Finished",
+      "failed": "Failed",
+      "cancelled": "Cancelled",
+      "downloading": "Downloading",
+      "checking": "Checking",
+      "preheating": "Preheating",
+      "slicing": "Slicing",
+      "levelling": "Levelling",
+      "idle": "Idle",
+      "unknown": "Unknown",
+      "offline": "Offline",
+      "moving": "Moving",
+      "busy": "Busy",
+      "available": "Ready",
+      "operational": "Ready",
+      "free": "Ready"
+    },
+    "values": {
+      "online": "Online",
+      "offline": "Offline",
+      "drying": "Drying",
+      "not_drying": "Not drying",
+      "available": "Available",
+      "busy": "Busy",
+      "update_available": "Update ready",
+      "up_to_date": "Current",
+      "minutes": "min",
+      "layers": "layers"
+    }
+  },
+  "card": {
+    "fallback_name": "3D printer",
+    "buttons": {
+      "print_settings": "Print settings",
+      "dry": "Dry",
+      "runout_refill": "Auto refill",
+      "toggle_body": "Show or hide details",
+      "light": "Printer light",
+      "power": "Printer power"
+    },
+    "controls": {
+      "pause": "Pause",
+      "resume": "Resume",
+      "cancel": "Cancel",
+      "confirm_cancel": "Stop this print? It can't be resumed afterwards."
+    },
+    "progress": {
+      "layer": "Layer {current} of {total}"
+    },
+    "media_view": {
+      "tabs": {
+        "camera": "Camera",
+        "preview": "Job render",
+        "printer": "Printer",
+        "printer_model": "Printer with model"
+      },
+      "live": "LIVE",
+      "preview_alt": "Render of the current job",
+      "camera_unavailable": "The camera isn't available right now.",
+      "player_unavailable": "The video player couldn't be loaded.",
+      "starting": "Starting video…"
+    },
+    "move": {
+      "title": "Move axes",
+      "step": "Step",
+      "home_all": "Home every axis",
+      "home_xy": "Home X/Y",
+      "home_z": "Home Z",
+      "motors_off": "Release motors",
+      "x_plus": "X+",
+      "x_minus": "X−",
+      "y_plus": "Y+",
+      "y_minus": "Y−",
+      "z_plus": "Z up",
+      "z_minus": "Z down",
+      "moving": "Moving…",
+      "failed": "The printer refused that move. Home the Z axis on its own first, then try again."
+    },
+    "sections": {
+      "filament": "Filament",
+      "insights": "Usage and cost"
+    },
+    "insights": {
+      "job_cost": "This print",
+      "last_job_cost": "Previous print",
+      "filament_cost_total": "Spent on filament",
+      "job_filament_required": "Print needs",
+      "job_filament_shortfall": "Missing",
+      "nozzle_wear_percent": "Nozzle wear",
+      "spool_inventory_remaining": "Left on spools",
+      "insufficient": "The loaded spools may not hold enough filament for this print.",
+      "empty": "Figures show up here after a print finishes and spool weights have been entered."
+    },
+    "monitored_stats": {
+      "ETA": "Done at",
+      "Elapsed": "Time spent",
+      "Remaining": "Time left",
+      "Status": "State",
+      "Online": "Connection",
+      "Availability": "Printer",
+      "Project": "File",
+      "Layer": "Layer",
+      "Hotend": "Nozzle",
+      "Bed": "Bed",
+      "T Hotend": "Nozzle target",
+      "T Bed": "Bed target",
+      "Dry Status": "Dryer",
+      "Dry Time": "Drying left",
+      "Speed Mode": "Speed",
+      "Fan Speed": "Part fan",
+      "On Time": "Exposure",
+      "Off Time": "Rest time",
+      "Bottom Time": "Base exposure",
+      "Model Height": "Model height",
+      "Bottom Layers": "Base layers",
+      "Z Up Height": "Lift height",
+      "Z Up Speed": "Lift speed",
+      "Z Down Speed": "Lower speed"
+    },
+    "print_settings": {
+      "heading": "Print settings",
+      "confirm_heading": "Are you sure?",
+      "confirm_message": "Do you want to {action} the print?",
+      "label_speed_mode": "Speed",
+      "label_nozzle_temp": "Nozzle target (°C)",
+      "label_hotbed_temp": "Bed target (°C)",
+      "label_fan_speed": "Part fan (%)",
+      "label_aux_fan_speed": "Side fan (%)",
+      "label_box_fan_speed": "Enclosure fan",
+      "print_pause": "Pause",
+      "print_resume": "Resume",
+      "print_cancel": "Cancel print",
+      "save_speed_mode": "Apply speed",
+      "save_target_nozzle": "Apply nozzle",
+      "save_target_hotbed": "Apply bed",
+      "save_fan_speed": "Apply fan",
+      "save_aux_fan_speed": "Apply side fan",
+      "save_box_fan_speed": "Apply enclosure fan"
+    },
+    "drying_settings": {
+      "heading": "Filament dryer",
+      "button_preset": "Preset {number}",
+      "button_stop_drying": "Stop drying",
+      "button_minutes": "min"
+    },
+    "spool_settings": {
+      "heading": "Slot {slot}",
+      "label_select_material": "Material",
+      "label_select_colour": "Colour",
+      "label_preset_colours": "Saved colours",
+      "placeholder_material": "Choose…"
+    },
+    "configure": {
+      "tabs": {
+        "main": "General",
+        "stats": "Rows",
+        "colours": "Colours"
+      },
+      "labels": {
+        "printer_id": "Printer",
+        "vertical": "Stack the picture above the details",
+        "round": "Round numbers",
+        "use_24hr": "24-hour clock",
+        "show_settings_button": "Always offer print settings",
+        "always_show": "Keep details open when idle",
+        "temperature_unit": "Temperature unit",
+        "light_entity_id": "Light",
+        "power_entity_id": "Power switch",
+        "camera_entity_id": "Camera",
+        "scale_factor": "Picture width",
+        "slot_colors": "Colour shortcuts",
+        "media_view": "Picture shown first",
+        "printer_art": "Printer drawing",
+        "show_controls": "Show print buttons",
+        "show_move_buttons": "Show axis controls",
+        "sections": "Extra sections",
+        "no_camera": "Never start a camera",
+        "monitored_stats": "Pick the rows to show and put them in order",
+        "add_colour": "Add colour",
+        "remove": "Remove",
+        "move_up": "Up",
+        "move_down": "Down"
+      },
+      "helpers": {
+        "light_entity_id": "Any light you want to switch from the card header.",
+        "power_entity_id": "A smart plug or other switch that powers the printer. Leave empty if you have none.",
+        "camera_entity_id": "Leave empty to let the card pick the printer's camera."
+      },
+      "options": {
+        "printer_art": {
+          "auto": "Match my printer",
+          "kobra_s1": "Enclosed",
+          "kobra_s1_combo": "Enclosed with colour box",
+          "kobra_3": "Open frame",
+          "resin": "Resin",
+          "fdm": "Simple"
+        },
+        "media_view": {
+          "auto": "Automatic",
+          "camera": "Camera",
+          "preview": "Job render",
+          "printer": "Printer drawing",
+          "printer_model": "Drawing with model",
+          "none": "Nothing"
+        },
+        "sections": {
+          "filament": "Filament",
+          "insights": "Usage and cost"
+        },
+        "scale_factor": {
+          "1": "Same width as the details",
+          "0.75": "Slightly narrower",
+          "0.5": "Half the details' width"
+        }
+      }
+    }
+  },
+  "panels": {
+    "initial": {
+      "printer_select": "Which printer would you like to open?",
+      "no_printers": "No printers from this integration were found."
+    },
+    "main": {
+      "title": "Overview",
+      "cards": {
+        "main": {
+          "description": "Printer details",
+          "fields": {
+            "printer_name": "Name",
+            "printer_id": "Printer ID",
+            "printer_mac": "MAC address",
+            "printer_model": "Model",
+            "printer_fw_version": "Firmware",
+            "printer_fw_update_available": "Firmware update",
+            "printer_online": "Connection",
+            "printer_available": "State",
+            "curr_nozzle_temp": "Nozzle",
+            "curr_hotbed_temp": "Bed",
+            "target_nozzle_temp": "Nozzle target",
+            "target_hotbed_temp": "Bed target",
+            "job_state": "Job",
+            "job_progress": "Progress",
+            "ace_fw_version": "Colour box firmware",
+            "ace_fw_update_available": "Colour box update",
+            "drying_active": "Dryer",
+            "drying_progress": "Drying left"
+          }
+        }
+      },
+      "groups": {
+        "machine": "Machine",
+        "ace": "Colour box",
+        "diagnostics": "Diagnostics"
+      },
+      "presets": {
+        "title": "Card ideas",
+        "lede": "Copy one of these into a dashboard card's code editor.",
+        "full": "Everything",
+        "model": "With model",
+        "compact": "Small",
+        "vertical": "Tall",
+        "copy": "Copy",
+        "copied": "Copied"
+      }
+    },
+    "files_local": {
+      "title": "Printer storage",
+      "cards": {}
+    },
+    "files_udisk": {
+      "title": "USB stick",
+      "cards": {}
+    },
+    "files_cloud": {
+      "title": "Cloud files",
+      "cards": {}
+    },
+    "print_no_cloud_save": {
+      "title": "Print a file",
+      "cards": {}
+    },
+    "print_save_in_cloud": {
+      "title": "Print and keep in cloud",
+      "cards": {}
+    },
+    "debug": {
+      "title": "Debug",
+      "cards": {}
+    },
+    "files": {
+      "empty": "No files listed. Refresh to ask the printer.",
+      "confirm_delete": "Delete {name}? This can't be undone."
+    },
+    "print": {
+      "file": "Sliced file",
+      "slots": "Colour box slots, one per colour in the file (for example 1, 2)",
+      "slots_invalid": "Slots must be whole numbers separated by commas.",
+      "no_file": "Choose a file first.",
+      "uploading": "Uploading…",
+      "started": "Sent to the printer."
+    }
+  }
+}

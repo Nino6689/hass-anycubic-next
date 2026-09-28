@@ -1,0 +1,37 @@
+{
+  "name": "anycubic-cloud-frontend",
+  "version": "1.0.0-dev.0",
+  "description": "Sidebar panel and dashboard card for the anycubic_cloud Home Assistant integration",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c && node scripts/stamp.mjs",
+    "build:debug": "rollup -c --environment DEBUG && node scripts/stamp.mjs",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@mdi/js": "^7.4.47",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-replace": "^6.0.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.12.0",
+    "rollup": "^4.63.5",
+    "tslib": "^2.8.1",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.1",
+    "vitest": "^3.2.7"
+  }
+}
