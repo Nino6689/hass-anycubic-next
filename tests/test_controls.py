@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from anycubic_lan import RequestRejectedError
+from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import entity_registry as er
@@ -463,3 +464,35 @@ async def test_controls_without_an_ace(
     ):
         await _press(hass, button)
     assert printer.client.commands == []
+
+
+async def test_file_list_buttons_follow_the_connection(
+    hass: HomeAssistant, loaded: MockConfigEntry, printer: MockPrinter
+) -> None:
+    """Round 2, F3: unavailable while the list cannot be fetched."""
+    coordinator = loaded.runtime_data
+    names = {"local": "local", "udisk": "usb_disk", "cloud": "cloud"}
+    for source, name in names.items():
+        state = hass.states.get(f"button.{P}_request_file_list_{name}")
+        assert state is not None
+        assert state.state == STATE_UNAVAILABLE
+        assert not coordinator.can_fetch_file_list(source)
+    # Pressing it anyway (as the entity would be) is refused, nothing sent.
+    button = hass.data["entity_components"]["button"].get_entity(
+        f"button.{P}_request_file_list_local"
+    )
+    with pytest.raises(ServiceValidationError) as err:
+        await button.async_press()
+    assert err.value.translation_key == "file_list_unavailable"
+    assert printer.client.commands == []
+
+    # A connection that can fetch a list makes its button available.
+    coordinator.file_list_sources = frozenset({"cloud"})
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get(f"button.{P}_request_file_list_cloud").state != (
+        STATE_UNAVAILABLE
+    )
+    assert hass.states.get(f"button.{P}_request_file_list_local").state == (
+        STATE_UNAVAILABLE
+    )

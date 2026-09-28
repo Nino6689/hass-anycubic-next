@@ -181,6 +181,15 @@
       },
       "secondary_drying_start_preset_4": {
         "default": "mdi:air-filter"
+      },
+      "request_file_list_cloud": {
+        "default": "mdi:cloud-search"
+      },
+      "request_file_list_local": {
+        "default": "mdi:folder-search"
+      },
+      "request_file_list_udisk": {
+        "default": "mdi:usb-flash-drive"
       }
     },
     "switch": {

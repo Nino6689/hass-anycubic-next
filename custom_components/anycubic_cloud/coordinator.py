@@ -299,6 +299,17 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         printer.remembered_light_types = frozenset([*remembered, *new])
         self._capabilities.async_delay_save(lambda: self._capability_data, 5.0)
 
+    # -- file lists (DECISIONS round 2, F3) ------------------------------------
+
+    # The file lists have no LAN form (BEHAVIOUR §2.2, §2.12): the printer's
+    # lists arrive as replies over CMQTT and the cloud list over HTTP. This
+    # coordinator's connection is LAN only, so none can be fetched.
+    file_list_sources: frozenset[str] = frozenset()
+
+    def can_fetch_file_list(self, source: str) -> bool:
+        """Whether ``source``'s list can be fetched over this connection."""
+        return source in self.file_list_sources
+
     @property
     def capability_data(self) -> dict[str, Any]:
         return self._capability_data

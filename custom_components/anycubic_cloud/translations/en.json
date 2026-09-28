@@ -224,6 +224,9 @@
     },
     "mqtt_connect_timeout": {
       "message": "The live connection to the Anycubic cloud could not be opened."
+    },
+    "file_list_unavailable": {
+      "message": "The {source} file list cannot be fetched over this printer's current connection."
     }
   },
   "services": {
@@ -1350,6 +1353,15 @@
       },
       "secondary_drying_start_preset_4": {
         "name": "Secondary start drying preset 4"
+      },
+      "request_file_list_cloud": {
+        "name": "Request File List (Cloud)"
+      },
+      "request_file_list_local": {
+        "name": "Request File List (Local)"
+      },
+      "request_file_list_udisk": {
+        "name": "Request File List (USB Disk)"
       }
     },
     "number": {

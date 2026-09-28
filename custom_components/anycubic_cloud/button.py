@@ -1,4 +1,10 @@
-"""Buttons (BEHAVIOUR §2.12). Cloud-only buttons are not created on LAN."""
+"""Buttons (BEHAVIOUR §2.12).
+
+Cloud-only buttons are not created on LAN, except the three
+``request_file_list_<source>`` buttons: they always exist and are unavailable
+while their list cannot be fetched over the entry's current connection, which
+the frontend uses as its signal (DECISIONS round 2, F3).
+"""
 
 from __future__ import annotations
 
@@ -9,6 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
+from homeassistant.exceptions import ServiceValidationError
 
 from . import control
 from .const import (
@@ -17,6 +24,7 @@ from .const import (
     AXIS_XY,
     AXIS_Y,
     AXIS_Z,
+    DOMAIN,
     DRYING_PRESETS,
     MOVE_HOME,
     MOVE_MINUS,
@@ -42,6 +50,32 @@ class AnycubicButtonDescription(AnycubicEntityDescription, ButtonEntityDescripti
     """A button and what pressing it does."""
 
     press_fn: Callable[[AnycubicCoordinator], Awaitable[None]]
+    available_fn: Callable[[AnycubicCoordinator], bool] | None = None
+
+
+FILE_LIST_SOURCES = ("local", "udisk", "cloud")
+
+
+def _file_list_fetchable(source: str) -> Callable[[AnycubicCoordinator], bool]:
+    def available(c: AnycubicCoordinator) -> bool:
+        return c.can_fetch_file_list(source)
+
+    return available
+
+
+def _request_file_list(
+    source: str,
+) -> Callable[[AnycubicCoordinator], Awaitable[None]]:
+    async def press(c: AnycubicCoordinator) -> None:
+        # Only reached when called while unavailable; no transport can fetch
+        # a list yet, so there is nothing to send.
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="file_list_unavailable",
+            translation_placeholders={"source": source},
+        )
+
+    return press
 
 
 async def _reset_nozzle(c: AnycubicCoordinator) -> None:
@@ -138,6 +172,14 @@ BUTTONS: tuple[AnycubicButtonDescription, ...] = (
     AnycubicButtonDescription(
         key="axis_motors_off", kind=Kind.FDM, press_fn=control.async_motors_off
     ),
+    *(
+        AnycubicButtonDescription(
+            key=f"request_file_list_{source}",
+            press_fn=_request_file_list(source),
+            available_fn=_file_list_fetchable(source),
+        )
+        for source in FILE_LIST_SOURCES
+    ),
     AnycubicButtonDescription(
         key="reset_nozzle_wear",
         kind=Kind.FDM,
@@ -192,6 +234,13 @@ class AnycubicButton(AnycubicEntity, ButtonEntity):
     """A printer or ACE button."""
 
     entity_description: AnycubicButtonDescription
+
+    @property
+    def available(self) -> bool:
+        available_fn = self.entity_description.available_fn
+        if available_fn is not None and not available_fn(self.coordinator):
+            return False
+        return super().available
 
     async def async_press(self) -> None:
         await self.entity_description.press_fn(self.coordinator)
