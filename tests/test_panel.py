@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+from types import ModuleType
 from unittest.mock import AsyncMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -22,17 +24,81 @@ def bundles(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_find_bundles(tmp_path: Path, bundles: Path) -> None:
-    card_hash, panel_file = panel._find_bundles(bundles)  # type: ignore[misc]
-    assert len(card_hash) == 8
-    assert panel_file == "entrypoint.1234abcd.js"
-    assert panel._find_bundles(tmp_path / "missing") is None
+def test_www_files(tmp_path: Path, bundles: Path) -> None:
+    files = panel._www_files(bundles)
+    assert files is not None
+    assert len(files.card_hash) == 8
+    assert files.panel_file == "entrypoint.1234abcd.js"
+    assert files.component == "anycubic-cloud-panel"
+    assert files.card_file == "anycubic-card.js"
+    assert files.directory == str(bundles)
+    assert panel._www_files(tmp_path / "missing") is None
+
+
+def _fake_package(directory: Path) -> ModuleType:
+    """A stand-in for anycubic_cloud_frontend >= 1.0.0, at its interface."""
+    module = ModuleType("anycubic_cloud_frontend")
+    module.locate_dir = lambda: str(directory)  # type: ignore[attr-defined]
+    module.entrypoint_js = lambda: "entrypoint.feedbeef.js"  # type: ignore[attr-defined]
+    module.webcomponent_name = lambda: "anycubic-cloud-panel"  # type: ignore[attr-defined]
+    module.card_js = lambda: "anycubic-card.js"  # type: ignore[attr-defined]
+    module.card_hash = lambda: "c0ffee00"  # type: ignore[attr-defined]
+    return module
+
+
+def test_package_is_preferred(tmp_path: Path, bundles: Path) -> None:
+    """Round 2, Q6: the package's interface names the files."""
+    with (
+        patch.object(panel.metadata, "version", return_value="1.0.0"),
+        patch.dict(sys.modules, {"anycubic_cloud_frontend": _fake_package(tmp_path)}),
+        patch.object(panel, "WWW", bundles),
+    ):
+        files = panel._find_frontend()
+    assert files == panel.FrontendFiles(
+        directory=str(tmp_path),
+        panel_file="entrypoint.feedbeef.js",
+        component="anycubic-cloud-panel",
+        card_file="anycubic-card.js",
+        card_hash="c0ffee00",
+    )
+
+
+@pytest.mark.parametrize("version", ["0.4.2", "0.9.99", "1.0.0.dev0", "1.0.0rc1"])
+def test_package_before_1_0_is_never_imported(bundles: Path, version: str) -> None:
+    """Releases before 1.0.0 are skipped before import; www/ is used."""
+    with (
+        patch.object(panel.metadata, "version", return_value=version),
+        patch.object(panel.importlib, "import_module") as import_module,
+        patch.object(panel, "WWW", bundles),
+    ):
+        files = panel._find_frontend()
+    import_module.assert_not_called()
+    assert files is not None
+    assert files.directory == str(bundles)
+
+
+def test_package_missing_or_broken(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    missing = panel.metadata.PackageNotFoundError("anycubic-cloud-frontend")
+    with patch.object(panel.metadata, "version", side_effect=missing):
+        assert panel._package_files() is None
+    with patch.object(panel.metadata, "version", return_value="not a version"):
+        assert panel._package_files() is None
+    broken = _fake_package(tmp_path)
+    del broken.card_hash
+    with (
+        patch.object(panel.metadata, "version", return_value="1.2.0"),
+        patch.dict(sys.modules, {"anycubic_cloud_frontend": broken}),
+    ):
+        assert panel._package_files() is None
+    assert "Could not load anycubic_cloud_frontend" in caplog.text
 
 
 async def test_nothing_registered_without_frontend(
     hass: HomeAssistant, printer: MockPrinter
 ) -> None:
-    with patch.object(panel, "_find_bundles") as find:
+    with patch.object(panel, "_find_frontend") as find:
         await setup_entry(hass, lan_entry())
     find.assert_not_called()
 
@@ -59,7 +125,17 @@ async def test_registration_lifecycle(
         patch.object(panel.frontend, "add_extra_js_url") as add_js,
         patch.object(panel.frontend, "async_remove_panel") as remove,
     ):
-        first = await setup_entry(hass, lan_entry())
+        card_config = {"vertical": True, "scaleFactor": 1.5, "monitoredStats": []}
+        first = await setup_entry(
+            hass,
+            lan_entry(
+                options={
+                    "lan_mode_enabled": True,
+                    "lan_host": payloads.HOST,
+                    "card_config": card_config,
+                }
+            ),
+        )
         second = await setup_entry(
             hass, lan_entry(unique_id="a4:e8:8d:00:00:02", title="Second")
         )
@@ -72,6 +148,11 @@ async def test_registration_lifecycle(
         )
         assert registered["anycubic_cloud"]["sidebar_title"] == "Anycubic Cloud & LAN"
         assert registered["anycubic_cloud"]["require_admin"] is False
+        assert registered["anycubic_cloud"]["webcomponent_name"] == (
+            "anycubic-cloud-panel"
+        )
+        # Round 2, F1: the stored card_config is the panel's config itself.
+        assert registered["anycubic_cloud"]["config"] == card_config
 
         await hass.config_entries.async_unload(first.entry_id)
         remove.assert_not_called()
