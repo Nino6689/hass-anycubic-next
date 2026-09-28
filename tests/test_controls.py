@@ -117,7 +117,7 @@ async def test_axis_buttons(
         {"axis": 1, "move_type": 1, "distance": 15},
     )
     await _press(hass, f"button.{P}_release_motors")
-    assert _last(printer) == ("axis", "turnOff", {})
+    assert _last(printer) == ("axis", "turnOff", None)
     await _press(hass, "button.request_axis_position")
     assert "axis" in printer.client.queries
 
@@ -233,7 +233,12 @@ async def test_ace_buttons(
             "multi_color_box": [
                 {
                     "id": 0,
-                    "drying_status": {"status": 1, "target_temp": 45, "duration": 360},
+                    "drying_status": {
+                        "status": 1,
+                        "target_temp": 45,
+                        "duration": 360,
+                        "remain_time": None,
+                    },
                 }
             ]
         },
@@ -243,12 +248,21 @@ async def test_ace_buttons(
         "status": 1,
         "target_temp": 50,
         "duration": 120,
+        "remain_time": None,
     }
     # V11: stop the first ACE only.
     await _press(hass, f"button.{A}_drying_stop")
     assert _last(printer)[2] == {
         "multi_color_box": [
-            {"id": 0, "drying_status": {"status": 0, "target_temp": 0, "duration": 0}}
+            {
+                "id": 0,
+                "drying_status": {
+                    "status": 0,
+                    "target_temp": 0,
+                    "duration": 0,
+                    "remain_time": None,
+                },
+            }
         ]
     }
 
@@ -263,7 +277,12 @@ async def test_drying_uses_stored_settings_and_the_dried_ace(
     await _press(hass, f"button.{A}_2_secondary_drying_start")
     assert _last(printer)[2]["multi_color_box"][0] == {
         "id": 1,
-        "drying_status": {"status": 1, "target_temp": 65, "duration": 360},
+        "drying_status": {
+            "status": 1,
+            "target_temp": 65,
+            "duration": 360,
+            "remain_time": None,
+        },
     }
     await _press(hass, f"button.{A}_2_secondary_drying_stop")
     assert _last(printer)[2]["multi_color_box"][0]["id"] == 1
@@ -283,6 +302,7 @@ async def test_drying_uses_stored_settings_and_the_dried_ace(
         "status": 1,
         "target_temp": 60,
         "duration": 90,
+        "remain_time": None,
     }
 
 
@@ -330,9 +350,21 @@ async def test_printer_numbers(
         (
             "set_nozzle_temperature",
             210,
-            ("tempature", "set", {"target_nozzle_temp": 210}),
+            (
+                "tempature",
+                "set",
+                {"type": 0, "target_nozzle_temp": 210, "target_hotbed_temp": 0},
+            ),
         ),
-        ("set_bed_temperature", 60, ("tempature", "set", {"target_hotbed_temp": 60})),
+        (
+            "set_bed_temperature",
+            60,
+            (
+                "tempature",
+                "set",
+                {"type": 1, "target_nozzle_temp": 0, "target_hotbed_temp": 60},
+            ),
+        ),
         ("set_fan_speed", 40, ("fan", "setSpeed", {"fan_speed_pct": 40})),
         ("set_auxiliary_fan_speed", 30, ("fan", "setSpeed", {"aux_fan_speed_pct": 30})),
         ("set_box_fan_level", 2, ("fan", "setSpeed", {"box_fan_level": 2})),

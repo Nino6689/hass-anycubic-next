@@ -137,11 +137,16 @@ async def async_request_position(coordinator: AnycubicCoordinator) -> None:
 # -- temperatures and fans (BEHAVIOUR §2.13; B22: idle or printing) ----------
 
 
+_TEMPERATURE_TARGETS = {"target_nozzle_temp": "nozzle", "target_hotbed_temp": "bed"}
+
+
 async def async_set_temperature(
     coordinator: AnycubicCoordinator, key: str, value: int
 ) -> None:
+    """Set one target; the other heater is left alone (PROTOCOL §7.2)."""
+    target = {_TEMPERATURE_TARGETS[key]: value}
     await _send_and_refresh(
-        coordinator, coordinator.link.async_set_temperature(key, value)
+        coordinator, coordinator.link.async_set_temperatures(**target)
     )
 
 

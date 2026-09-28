@@ -1,8 +1,7 @@
 """LAN Mode transport, built on anycubic-lan (BEHAVIOUR §5.3).
 
-Order payloads for the kinds that anycubic-lan has no helper for follow the
-shapes of the printer's own reports; see QUESTIONS.md Q1 for the field names
-the specification does not yet confirm.
+Order payloads are the exact ``data`` objects of anycubic-lan PROTOCOL.md
+§7.2 (DECISIONS round 2, Q1).
 """
 
 from __future__ import annotations
@@ -12,7 +11,9 @@ from enum import StrEnum
 import logging
 import re
 import secrets
+import time
 from typing import TYPE_CHECKING, Any, cast
+import uuid
 
 from anycubic_lan import (
     AnycubicLanClient,
@@ -34,6 +35,11 @@ _LOGGER = logging.getLogger(__name__)
 # It is the segment after the model id: ``.../printer/public/<model>/<id>/...``
 # (reports) or ``.../web/printer/<model>/<id>/...`` (orders).
 _TOPIC_DEVICE = re.compile(r"(/printer/(?:public/)?[^/]+/)[^/]+")
+# `tempature`/`set` says which figures apply; the other is sent as 0 and
+# ignored (PROTOCOL §7.2).
+TEMPERATURE_NOZZLE = 0
+TEMPERATURE_BED = 1
+TEMPERATURE_BOTH = 2
 # The signed upload URL authorises uploads to the printer (anycubic-lan HW4).
 _SIGNED_UPLOAD = re.compile(rb"[^\s\"']*gcode_upload\?s=[^\s\"']*")
 
@@ -62,7 +68,12 @@ class IntegrationLanClient(AnycubicLanClient):
     The merged ``PrinterState`` does not keep the ``axis``/``move`` state
     (``doing``/``done``/``failed``) that the axis binary sensors need
     (BEHAVIOUR §1.8), so the raw report is passed on before it is merged.
-    anycubic-lan 0.1.0 has no public hook for this (QUESTIONS.md Q2).
+    anycubic-lan 0.1.0 has no public hook for this; its 0.2.0 raw-report
+    listener replaces this override (DECISIONS round 2, Q2.1).
+
+    Orders go through :meth:`send_order`, which publishes ``data`` exactly as
+    given: anycubic-lan 0.1.0's ``send_command`` turns ``None`` into ``{}``,
+    and motors off must send ``null`` (Q1).
     """
 
     def __init__(
@@ -91,6 +102,27 @@ class IntegrationLanClient(AnycubicLanClient):
                 _LOGGER.exception("Error handling a LAN report")
         super()._handle_message(topic, payload)
 
+    async def send_order(
+        self, kind: ReportKind | ExtraKind, action: str, data: Mapping[str, Any] | None
+    ) -> str:
+        """Publish an order with ``data`` as given (``None`` is ``null``).
+
+        The envelope is PROTOCOL §7.2's: millisecond timestamp, fresh msgid.
+        """
+        msgid = str(uuid.uuid4())
+        # _publish only reads ``kind.value``; ExtraKind has one too.
+        self._publish(
+            cast("ReportKind", kind),
+            {
+                "type": kind.value,
+                "action": action,
+                "timestamp": int(time.time() * 1000),
+                "msgid": msgid,
+                "data": dict(data) if data is not None else None,
+            },
+        )
+        return msgid
+
 
 class LanLink:
     """One LAN connection to one printer: handshake, client and orders."""
@@ -111,7 +143,7 @@ class LanLink:
         self._on_report = on_report
         self._on_connection = on_connection
         self._debug_messages = debug_messages
-        self.client: AnycubicLanClient | None = None
+        self.client: IntegrationLanClient | None = None
         self.info: PrinterConnectionInfo | None = None
 
     @property
@@ -139,7 +171,7 @@ class LanLink:
         if client is not None:
             await client.disconnect()
 
-    def _require_client(self) -> AnycubicLanClient:
+    def _require_client(self) -> IntegrationLanClient:
         if self.client is None:
             raise NotConnectedError("Not connected to the printer")
         return self.client
@@ -155,12 +187,9 @@ class LanLink:
     # -- orders (BEHAVIOUR §5.3 table) ---------------------------------------
 
     async def async_send(
-        self, kind: ReportKind | ExtraKind, action: str, data: Mapping[str, Any]
+        self, kind: ReportKind | ExtraKind, action: str, data: Mapping[str, Any] | None
     ) -> str:
-        # send_command only reads ``kind.value``; ExtraKind has one too.
-        return await self._require_client().send_command(
-            cast("ReportKind", kind), action, data
-        )
+        return await self._require_client().send_order(kind, action, data)
 
     async def async_pause(self) -> None:
         await self._require_client().pause()
@@ -180,10 +209,27 @@ class LanLink:
     async def async_start_camera(self) -> None:
         await self.async_send(ExtraKind.VIDEO, "startCapture", {})
 
-    async def async_set_temperature(self, key: str, value: int) -> None:
-        # Only the figure being changed is sent (Q1): sending the other as 0
-        # without the cloud's heat type could switch that heater off.
-        await self.async_send(ReportKind.TEMPERATURE, "set", {key: value})
+    async def async_set_temperatures(
+        self, *, nozzle: int | None = None, bed: int | None = None
+    ) -> None:
+        """Set one or both targets; ``type`` names the figures that apply."""
+        if nozzle is None and bed is None:
+            raise ValueError("No temperature given")
+        if bed is None:
+            heat_type = TEMPERATURE_NOZZLE
+        elif nozzle is None:
+            heat_type = TEMPERATURE_BED
+        else:
+            heat_type = TEMPERATURE_BOTH
+        await self.async_send(
+            ReportKind.TEMPERATURE,
+            "set",
+            {
+                "type": heat_type,
+                "target_nozzle_temp": nozzle or 0,
+                "target_hotbed_temp": bed or 0,
+            },
+        )
 
     async def async_set_fan(self, key: str, value: int) -> None:
         await self.async_send(ReportKind.FAN, "setSpeed", {key: value})
@@ -196,7 +242,7 @@ class LanLink:
         )
 
     async def async_motors_off(self) -> None:
-        await self.async_send(ReportKind.AXIS, "turnOff", {})
+        await self.async_send(ReportKind.AXIS, "turnOff", None)
 
     async def async_ace_command(self, action: str, box: Mapping[str, Any]) -> None:
         """An ACE order, addressed like the printer's own box reports."""
@@ -215,6 +261,7 @@ class LanLink:
                     "status": status,
                     "target_temp": temperature,
                     "duration": duration,
+                    "remain_time": None,
                 },
             },
         )

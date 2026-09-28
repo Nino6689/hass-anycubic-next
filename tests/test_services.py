@@ -67,6 +67,11 @@ async def test_printer_selector(
     await _call(hass, service, base | {"device_id": [_device_id(hass)]})
     await _call(hass, service, base | {"printer_id": payloads.PRINTER_ID})
     assert len(printer.client.commands) == 3
+    assert printer.client.commands[-1] == (
+        "tempature",
+        "set",
+        {"type": 0, "target_nozzle_temp": 200, "target_hotbed_temp": 0},
+    )
 
     with pytest.raises(vol.Invalid):
         await _call(hass, service, base)
@@ -167,7 +172,11 @@ async def test_lan_actions(
         (
             "change_print_target_hotbed_temperature",
             {"temperature": 65},
-            ("tempature", "set", {"target_hotbed_temp": 65}),
+            (
+                "tempature",
+                "set",
+                {"type": 1, "target_nozzle_temp": 0, "target_hotbed_temp": 65},
+            ),
         ),
         (
             "change_print_fan_speed",

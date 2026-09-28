@@ -58,7 +58,7 @@ class FakeLanClient:
         self._state_listeners: list[Callable[[PrinterState], None]] = []
         self._connection_listeners: list[Callable[[bool], None]] = []
         self.printer = printer
-        self.commands: list[tuple[str, str, dict[str, Any]]] = []
+        self.commands: list[tuple[str, str, Any]] = []
         self.queries: list[str] = []
         self.disconnected = False
 
@@ -125,6 +125,16 @@ class FakeLanClient:
         if self.printer.command_error is not None:
             raise self.printer.command_error
         self.commands.append((kind.value, action, dict(data or {})))
+        return "msgid"
+
+    async def send_order(
+        self, kind: Any, action: str, data: Mapping[str, Any] | None
+    ) -> str:
+        """The integration's own orders: ``data`` recorded exactly as sent."""
+        self._require()
+        if self.printer.command_error is not None:
+            raise self.printer.command_error
+        self.commands.append((kind.value, action, dict(data) if data else data))
         return "msgid"
 
     async def _job(self, action: str) -> str:
