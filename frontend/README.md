@@ -37,11 +37,11 @@ always names the files it ships.
 ```python
 import anycubic_cloud_frontend as fe
 
-fe.locate_dir()         # serve this directory at /anycubic-cloud-panel-static
-fe.entrypoint_js()      # panel module filename, register with module_url
+fe.locate_dir()  # serve this directory at /anycubic-cloud-panel-static
+fe.entrypoint_js()  # panel module filename, register with module_url
 fe.webcomponent_name()  # "anycubic-cloud-panel"
-fe.card_js()            # "anycubic-card.js"
-fe.card_hash()          # add the card as an extra JS module: anycubic-card.js?v=<hash>
+fe.card_js()  # "anycubic-card.js"
+fe.card_hash()  # add the card as an extra JS module: anycubic-card.js?v=<hash>
 ```
 
 Constants `ENTRYPOINT_JS`, `CARD_JS`, `CARD_HASH`, `PANEL_HASH`,
