@@ -26,6 +26,7 @@ code is compared mechanically with the GPL projects before release.
 | 2026-09-28 | Specification | Claude (local) | `BEHAVIOUR.md` §9 and `FRONTEND.md` §7 open items; 2.x `icons.json` | `DECISIONS.md`; COMPAT §3.3 icons; V8 source allowed above | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local) | PR #1 and PR #2 (for acceptance and similarity checks only); 2.x code and library, read for protocol facts | Round-2 answers in `DECISIONS.md`; exact command payloads in `anycubic-lan` PROTOCOL.md | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local) | Build `clean/lan-integration` @ `5c0b6f8` run black-box over a copy of a live 2.x install's storage and against the real printer | `ACCEPTANCE.md` (upgrade test U, U1–U4); COMPAT §3 state formats and the literal `Layers` unit | n/a — specification team |
+| 2026-09-28 | Specification | Claude (local) | Builds `4939244` (B) and `6a8c382` (C), run black-box over the 2.x snapshot and the real printer, and rendered in WebKit | `ACCEPTANCE.md`: frontend test, round-3 re-test, Phase B and C accepted | n/a — specification team |
 
 ## Similarity checks
 
@@ -36,3 +37,4 @@ code is compared mechanically with the GPL projects before release.
 | 2026-09-28 | PR #1 `frontend/src/` | 2.x `frontend_panel/src` | 5 — generic CSS centring rules; 4 — card default values required by COMPAT | Clean |
 | 2026-09-28 | PR #2 `custom_components/`, `tests/` @ `60d851a` (round 2) | 2.x integration, 2.x library, WaresWichall | 40 — Anycubic's error-code table (data); 12 — filament density table (data); next 7 — Home Assistant import blocks | Clean; unchanged by round 2 |
 | 2026-09-28 | PR #1 `frontend/src/` @ `6a8c382` (round 2) | 2.x `frontend_panel/src` | 5 — generic CSS centring rules; 4 — card default values required by COMPAT | Clean; unchanged by round 2 |
+| 2026-09-28 | PR #2 `custom_components/`, `tests/` @ `4939244` (round 3) | 2.x integration, 2.x library, WaresWichall | 40 — Anycubic's error-code table (data); 12 — filament density table (data); 7 and 6 — Home Assistant import blocks | Clean; unchanged by round 3 |

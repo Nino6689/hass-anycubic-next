@@ -96,3 +96,16 @@ dashboard twice: once with the defaults, once with `alwaysShow`, `vertical`,
 
 - The Overview's "Firmware update: Current" comes from U5 and will read unknown once U5 is fixed.
 - The speed stat reads `2`: the mode code. On LAN, 2.x shows the same, because the names come from the cloud (BEHAVIOUR). **Accepted.**
+
+## Round 3 re-test — 2026-09-28, `clean/lan-integration` @ `4939244` + `clean/frontend` @ `6a8c382`
+
+The full run was repeated: the upgrade test over the 2.x snapshot, the hardware commands and the frontend screenshots.
+
+- **U1–U5 are confirmed fixed on hardware.** The layer unit reads `Layers` and numbers read `45.0`.
+  Home Assistant logs **no** warnings from the integration at setup, while running or at shutdown.
+  The LAN firmware entity reads `unknown`, and the panel shows the installed version without claiming "Current".
+- 110 entities provided on LAN now match 2.x exactly. Every remaining difference is one accepted above.
+  The file-list buttons (F3), `external_spool_loaded` (G15), the firmware entity (G10) and the reel-memory re-sync.
+- The config entry, all 132 ids, both devices and the ledger are intact. The commands and the frontend pass as before.
+
+**Result: Phase B (LAN) and Phase C (frontend) are accepted.**
