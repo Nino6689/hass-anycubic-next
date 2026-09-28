@@ -38,3 +38,12 @@ printer at the same moment.
 | U2 | `number` states read `360`, `45`, `0`. | `360.0`, `45.0`, `0.0`: float values, as 2.x reported (COMPAT §3 "State formats"). Covers drying duration and temperature, fan speeds, box fan level and every other number. |
 | U3 | At setup Home Assistant 2026.9 logs: *Detected that custom integration 'anycubic_cloud' calls `device_registry.async_get_or_create` with a deprecated `via_device` parameter; use `via_device_id` instead* (`entity.py`, line 151). | No deprecation warnings. |
 | U4 | At shutdown Home Assistant logs: *Task … name='anycubic_cloud push <title> anycubic_cloud <entry id>' coro=AnycubicCoordinator._async_push_listeners() … was still running after final writes shutdown stage; Integrations should cancel non-critical tasks when receiving the stop event*. | The push task ends cleanly on unload and on Home Assistant stop. |
+
+### Re-run on `clean/lan-integration` @ `60d851a` (after round 2)
+
+The method is unchanged. Everything under **Passed** above still holds. 104 provided entities now
+match 2.x exactly (97 before). The request-file-list buttons now exist on LAN
+and read unavailable, which is answer F3 applied as specified. **Accepted.**
+
+- U1, U2 and U3 are still open. This build predates the report.
+- U4 did not reproduce in this run: the push task ended before shutdown. Keep the fix anyway. The warning appears whenever a report is still being coalesced when Home Assistant stops.
