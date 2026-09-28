@@ -8,6 +8,12 @@ export interface AceSlot {
   colour?: string;
   material?: string;
   loaded: boolean;
+  /**
+   * The ledger's estimate of what is left on the reel, from the slot's
+   * `ace_slot_N_filament_remaining_percent` sensor; undefined when unknown.
+   * Never `consumables_percent`, which Anycubic always reports as 0
+   * (DECISIONS, 'Reel fill').
+   */
   percent?: number;
   raw: SpoolInfo;
 }
@@ -25,14 +31,15 @@ export function aceUnit(p: Printer, index: 0 | 1): AceUnit {
   const active = p.aceActive(index);
   const info = p.attr<SpoolInfo[]>(key, "spool_info");
   const box = p.attr<{ loaded_slot?: number | null }>(key, "box_info");
+  const prefix = index === 0 ? "" : "secondary_";
   const slots: AceSlot[] = (Array.isArray(info) ? info : []).map((s, i) => {
-    const pct = typeof s?.consumables_percent === "number" ? s.consumables_percent : undefined;
+    const slot = typeof s?.slot === "number" ? s.slot : i + 1;
     return {
-      slot: typeof s?.slot === "number" ? s.slot : i + 1,
+      slot,
       colour: spoolColour(s),
       material: typeof s?.material_type === "string" && s.material_type ? s.material_type : undefined,
       loaded: s?.spool_loaded !== false,
-      percent: pct,
+      percent: p.num(`${prefix}ace_slot_${slot}_filament_remaining_percent`),
       raw: s ?? {},
     };
   });
