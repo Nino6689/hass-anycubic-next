@@ -108,6 +108,54 @@
       },
       "secondary_dry_status_remaining_time": {
         "default": "mdi:timer-sand"
+      },
+      "file_list_cloud": {
+        "default": "mdi:cloud-outline"
+      },
+      "file_list_local": {
+        "default": "mdi:folder"
+      },
+      "file_list_udisk": {
+        "default": "mdi:usb-flash-drive"
+      },
+      "job_anti_alias_count": {
+        "default": "mdi:blur"
+      },
+      "job_bottom_layers": {
+        "default": "mdi:layers-outline"
+      },
+      "job_bottom_time": {
+        "default": "mdi:timer-outline"
+      },
+      "job_model_height": {
+        "default": "mdi:arrow-expand-vertical"
+      },
+      "job_off_time": {
+        "default": "mdi:timer-off"
+      },
+      "job_on_time": {
+        "default": "mdi:timer-play"
+      },
+      "job_z_down_speed": {
+        "default": "mdi:arrow-down-bold"
+      },
+      "job_z_thick": {
+        "default": "mdi:arrow-collapse-vertical"
+      },
+      "job_z_up_height": {
+        "default": "mdi:arrow-up"
+      },
+      "job_z_up_speed": {
+        "default": "mdi:arrow-up-bold"
+      },
+      "material_used_total": {
+        "default": "mdi:weight-kilogram"
+      },
+      "print_count_total": {
+        "default": "mdi:counter"
+      },
+      "print_time_total_hrs": {
+        "default": "mdi:clock-outline"
       }
     },
     "binary_sensor": {
@@ -137,6 +185,9 @@
       },
       "secondary_dry_status_is_drying": {
         "default": "mdi:air-filter"
+      },
+      "mqtt_connection_active": {
+        "default": "mdi:transit-connection-variant"
       }
     },
     "button": {
@@ -190,6 +241,9 @@
       },
       "request_file_list_udisk": {
         "default": "mdi:usb-flash-drive"
+      },
+      "refresh_mqtt_connection": {
+        "default": "mdi:connection"
       }
     },
     "switch": {
@@ -198,11 +252,19 @@
       },
       "secondary_multi_color_box_runout_refill": {
         "default": "mdi:autorenew"
+      },
+      "manual_mqtt_connection_enabled": {
+        "default": "mdi:transit-connection-variant"
       }
     },
     "light": {
       "printer_light": {
         "default": "mdi:lightbulb"
+      }
+    },
+    "image": {
+      "job_image_url": {
+        "default": "mdi:image"
       }
     }
   },

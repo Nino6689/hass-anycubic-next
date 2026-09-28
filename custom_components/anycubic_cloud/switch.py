@@ -8,10 +8,8 @@ from typing import TYPE_CHECKING, Any
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import callback
-from homeassistant.exceptions import ServiceValidationError
 
 from . import control
-from .const import DOMAIN
 from .entity import (
     AnycubicEntity,
     AnycubicEntityDescription,
@@ -34,6 +32,11 @@ class AnycubicSwitchDescription(AnycubicEntityDescription, SwitchEntityDescripti
 
 AI_DETECTION = AnycubicSwitchDescription(
     key="ai_detection_enabled", entity_category=EntityCategory.CONFIG
+)
+MANUAL_MQTT = AnycubicSwitchDescription(
+    key="manual_mqtt_connection_enabled",
+    cloud_only=True,
+    entity_category=EntityCategory.DIAGNOSTIC,
 )
 RUNOUT_REFILL = (
     AnycubicSwitchDescription(
@@ -59,15 +62,21 @@ async def async_setup_entry(
     ) -> AnycubicEntity:
         if description is AI_DETECTION:
             return AiDetectionSwitch(coordinator, description)
+        if description is MANUAL_MQTT:
+            return ManualMqttSwitch(coordinator, description)
         return RunoutRefillSwitch(coordinator, description)
 
     async_add_when_ready(
-        entry.runtime_data, (AI_DETECTION, *RUNOUT_REFILL), factory, async_add_entities
+        entry.runtime_data,
+        (AI_DETECTION, MANUAL_MQTT, *RUNOUT_REFILL),
+        factory,
+        async_add_entities,
     )
 
 
 class AiDetectionSwitch(AnycubicEntity, SwitchEntity):
-    """AI failure detection. Readable over LAN; changing it is cloud only."""
+    """AI failure detection. Readable over LAN; changing it is cloud only
+    (order 1243 has no LAN form, BEHAVIOUR §5.3)."""
 
     entity_description: AnycubicSwitchDescription
 
@@ -77,17 +86,38 @@ class AiDetectionSwitch(AnycubicEntity, SwitchEntity):
         return self.printer.ai_detection_enabled
 
     async def async_turn_on(self, **kwargs: Any) -> None:
-        self._refuse()
+        await control.async_set_ai_detection(self.coordinator, True)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
-        self._refuse()
+        await control.async_set_ai_detection(self.coordinator, False)
 
-    @staticmethod
-    def _refuse() -> None:
-        # Order 1243 has no LAN form (BEHAVIOUR §5.3).
-        raise ServiceValidationError(
-            translation_domain=DOMAIN, translation_key="cloud_only_control"
-        )
+
+class ManualMqttSwitch(AnycubicEntity, SwitchEntity):
+    """Hold the cloud MQTT link open whatever the connect mode (§2.15).
+
+    In memory only: off after every restart or reload; one flag per entry.
+    """
+
+    entity_description: AnycubicSwitchDescription
+
+    @property
+    def is_on(self) -> bool:
+        cloud = self.coordinator.runtime.cloud
+        return cloud is not None and cloud.mqtt.manual
+
+    async def _set(self, enabled: bool) -> None:
+        cloud = self.coordinator.runtime.cloud
+        if cloud is None:  # pragma: no cover - created only with an account
+            return
+        await cloud.mqtt.async_set_manual(enabled)
+        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._set(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._set(False)
 
 
 class RunoutRefillSwitch(AnycubicEntity, SwitchEntity):

@@ -14,9 +14,9 @@ from homeassistant.helpers.entity import EntityDescription
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import MANUFACTURER
-from .coordinator import AnycubicCoordinator
+from .coordinator import AnycubicCoordinator, AnycubicRuntime
 from .identity import ace_identifier, printer_identifier
-from .model import MATERIAL_FILAMENT
+from .model import MATERIAL_FILAMENT, MATERIAL_RESIN
 
 if TYPE_CHECKING:
     from homeassistant.helpers.entity import Entity
@@ -36,6 +36,7 @@ class Kind(StrEnum):
 
     PRINTER = "printer"
     FDM = "fdm"
+    LCD = "lcd"
     ACE1 = "ace1"
     ACE2 = "ace2"
 
@@ -56,6 +57,9 @@ class AnycubicEntityDescription(EntityDescription):
     device: Device = Device.PRINTER
     preset: int | None = None
     """Drying preset number for the preset buttons (``dry1``/``dry2``)."""
+    cloud_only: bool = False
+    """Created only on entries with an Anycubic account (DECISIONS round 2,
+    Q8: never on LAN-only entries)."""
 
 
 def device_info(coordinator: AnycubicCoordinator, device: Device) -> DeviceInfo:
@@ -70,7 +74,7 @@ def device_info(coordinator: AnycubicCoordinator, device: Device) -> DeviceInfo:
             manufacturer=MANUFACTURER,
             model=identity.model_name,
             name=identity.name,
-            sw_version=printer.state.firmware_version,
+            sw_version=printer.firmware_version,
             serial_number=str(printer_id),
         )
         if identity.connection_mac:
@@ -137,13 +141,16 @@ def description_ready(
     """``True`` to create now, ``False`` to wait, ``None`` to drop for good."""
     if not coordinator.has_printer:
         return False
+    if description.cloud_only and coordinator.runtime.cloud is None:
+        return None
     printer = coordinator.printer
     kind = description.kind
-    if kind is Kind.FDM:
+    if kind in (Kind.FDM, Kind.LCD):
         material = printer.identity.material_type
         if material is None:
             return False  # G14: kept pending until the material is known
-        return True if material == MATERIAL_FILAMENT else None
+        wanted = MATERIAL_FILAMENT if kind is Kind.FDM else MATERIAL_RESIN
+        return True if material == wanted else None
     if kind in (Kind.ACE1, Kind.ACE2):
         # B1 (#41): kept pending until the ACE reports, never dropped.
         needed = 1 if kind is Kind.ACE1 else 2
@@ -155,30 +162,41 @@ def description_ready(
 
 
 def async_add_when_ready[D: AnycubicEntityDescription](
-    coordinator: AnycubicCoordinator,
+    runtime: AnycubicRuntime,
     descriptions: Iterable[D],
     factory: Callable[[AnycubicCoordinator, D], Entity],
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Add each entity once its existence rule holds; re-check every update."""
-    pending: list[D] = list(descriptions)
+    """Add each printer's entities once their existence rule holds.
+
+    Re-checked on every update of that printer (BEHAVIOUR §1.7).
+    """
+    wanted = tuple(descriptions)
+    entry = runtime.entry
 
     @callback
-    def _check() -> None:
-        ready: list[Entity] = []
-        for description in list(pending):
-            verdict = description_ready(coordinator, description)
-            if verdict is False:
-                continue
-            pending.remove(description)
-            if verdict:
-                ready.append(factory(coordinator, description))
-        if ready:
-            async_add_entities(ready)
+    def _track(coordinator: AnycubicCoordinator) -> None:
+        pending: list[D] = list(wanted)
 
-    _check()
-    if pending:
-        coordinator.config_entry.async_on_unload(coordinator.async_add_listener(_check))
+        @callback
+        def _check() -> None:
+            ready: list[Entity] = []
+            for description in list(pending):
+                verdict = description_ready(coordinator, description)
+                if verdict is False:
+                    continue
+                pending.remove(description)
+                if verdict:
+                    ready.append(factory(coordinator, description))
+            if ready:
+                async_add_entities(ready)
+
+        _check()
+        if pending:
+            entry.async_on_unload(coordinator.async_add_listener(_check))
+
+    for coordinator in list(runtime.coordinators.values()):
+        _track(coordinator)
 
 
 def attrs_or_none(value: dict[str, Any] | None) -> dict[str, Any] | None:

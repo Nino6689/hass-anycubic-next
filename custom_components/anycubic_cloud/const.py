@@ -54,6 +54,51 @@ LAN_INFO_TIMEOUT: Final = 20.0
 STORE_FILAMENT: Final = "anycubic_cloud.filament"
 STORE_CAPABILITIES: Final = "anycubic_cloud.capabilities"
 STORE_VERSION: Final = 1
+# The cloud session (token store): per entry, and the un-suffixed legacy key
+# older versions wrote (COMPAT §6; PROTOCOL A §5.3 rule 2).
+STORE_TOKENS: Final = "anycubic_cloud"
+STORE_TOKENS_LEGACY: Final = "anycubic_cloud"
+
+# Cloud poll cadence and back-off (BEHAVIOUR §5.1).
+CLOUD_POLL_INTERVAL: Final = 60.0
+CLOUD_POLL_AFTER_CONTROL: Final = 10.0
+CLOUD_POLL_FAILURES_BEFORE_PAUSE: Final = 3
+CLOUD_POLL_PAUSE: Final = 240.0
+# Setup retries on a transient cloud answer (BEHAVIOUR §5.7).
+CLOUD_SETUP_ATTEMPTS: Final = 4
+CLOUD_SETUP_RETRY_DELAY: Final = 10.0
+# A forced refresh after a printer went from free to busy (BEHAVIOUR §5.1).
+PRINT_STARTED_REFRESH_DELAY: Final = 5.0
+
+# Cloud MQTT lifecycle (BEHAVIOUR §5.2, PROTOCOL C §6.17).
+MQTT_ACTION_HOLD: Final = 300.0
+MQTT_IDLE_RELEASE: Final = 900.0
+MQTT_WAKE_TIMEOUT: Final = 10.0
+MQTT_WAKE_SETTLE: Final = 2.0
+MQTT_REFRESH_MIN_INTERVAL: Final = 300.0
+MQTT_REFRESH_PAUSE: Final = 2.0
+MQTT_CAPABILITY_DELAY: Final = 10.0
+CAPABILITY_POLL_BUDGET: Final = 3
+MQTT_MODE_PRINTING: Final = 1
+MQTT_MODE_PRINTING_DRYING: Final = 2
+MQTT_MODE_ONLINE: Final = 3
+MQTT_MODE_ALWAYS: Final = 4
+MQTT_MODE_NEVER: Final = 5
+
+# File lists (BEHAVIOUR §2.12, §4.5).
+FILE_LIST_LOCAL: Final = "local"
+FILE_LIST_UDISK: Final = "udisk"
+FILE_LIST_CLOUD: Final = "cloud"
+FILE_LIST_RETRY_DELAY: Final = 5.0
+FILE_LIST_RETRY_SETTLE: Final = 2.0
+DELETE_RELIST_DELAYS: Final = (2.0, 7.0)
+CLOUD_DELETE_RELIST_DELAY: Final = 5.0
+# Upload read retries of the print actions (BEHAVIOUR §4.4).
+UPLOAD_READ_ATTEMPTS: Final = 3
+UPLOAD_READ_DELAY: Final = 1.0
+
+# Expiry repair (BEHAVIOUR §5.6).
+TOKEN_EXPIRY_WARNING_DAYS: Final = 14
 
 # ACE model ids (COMPAT §2; anycubic-lan PROTOCOL §6.7 as corrected).
 # DECISIONS round 2, Q2.3: only 40001 is named; others are the generic "ACE".
@@ -162,7 +207,7 @@ SET_SLOT_MATERIALS: Final[dict[str, str]] = {
 }
 
 # Cloud function id -> name, used by current_status.supported_functions
-# (BEHAVIOUR §2.14). Empty on LAN; kept for the cloud phase.
+# (BEHAVIOUR §2.14). Empty on LAN.
 FUNCTION_NAMES: Final[dict[int, str]] = {
     1: "AXLE_MOVEMENT",
     2: "FILE_MANAGER",
@@ -214,3 +259,4 @@ CARD_CONFIG_LIST_KEYS: Final = ("monitoredStats", "slotColors", "sections")
 CARD_CONFIG_NUMBER_KEYS: Final = ("scaleFactor",)
 
 EVENT_TYPE: Final = DOMAIN
+EVENT_PRINT_CLOUD_START: Final = "print_cloud_start"

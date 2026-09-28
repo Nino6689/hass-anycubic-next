@@ -40,13 +40,20 @@ async def test_diagnostics_redact_secrets(
         assert secret not in dump, secret
 
     assert result["entry"]["data"]["user_token"] == "**REDACTED**"
-    assert result["connection"]["discovery"]["fileUploadurl"] == "**REDACTED**"
-    assert result["connection"]["discovery"]["modelName"] == "Anycubic Kobra S1"
-    assert result["connection"]["broker"]["port"] == 9883
-    assert result["printer"]["state"]["file_upload_url"] == "**REDACTED**"
-    assert result["printer"]["state"]["firmware_version"] == "2.7.2.7"
-    assert result["printer"]["identity"]["mac"] == "**REDACTED**"
-    assert result["printer"]["state"]["ace_boxes"][0]["slots"][0]["material"] == "PLA"
+    assert result["entry"]["title"] == "**REDACTED**"
+    assert result["cloud"] is None  # the app credentials are not installed
+    (printer_diag,) = result["printers"]
+    connection = printer_diag["connection"]
+    assert connection["discovery"]["fileUploadurl"] == "**REDACTED**"
+    assert connection["discovery"]["modelName"] == "Anycubic Kobra S1"
+    assert connection["broker"]["port"] == 9883
+    assert connection["source"] == "lan"
+    state = printer_diag["printer"]["state"]
+    assert state["file_upload_url"] == "**REDACTED**"
+    assert state["firmware_version"] == "2.7.2.7"
+    assert printer_diag["printer"]["identity"]["mac"] == "**REDACTED**"
+    assert state["ace_boxes"][0]["slots"][0]["material"] == "PLA"
     assert result["capabilities"] == {"printers": {"42424242": {"light_types": [2]}}}
-    assert result["forecast"] is None
+    assert printer_diag["forecast"] is None
+    assert printer_diag["cloud"] is None
     assert "printers" in result["ledger"]

@@ -52,8 +52,12 @@ def unique_id_mac(mac: str) -> str:
 
 
 def is_cloud_entry(entry: ConfigEntry) -> bool:
-    """An entry set up with an Anycubic token (BEHAVIOUR §0.1)."""
-    return bool(entry.data.get(CONF_USER_TOKEN))
+    """An entry set up with an Anycubic token (BEHAVIOUR §0.1).
+
+    LAN-only entries have no ``user_token`` at all; a cloud entry whose token
+    is empty is still one, and asks for re-authentication (§5.7).
+    """
+    return CONF_USER_TOKEN in entry.data
 
 
 def device_user_id(entry: ConfigEntry) -> str:

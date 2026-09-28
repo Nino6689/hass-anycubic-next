@@ -1,4 +1,4 @@
-"""Sensors (BEHAVIOUR §2.1-§2.10). Only keys with a LAN source exist here."""
+"""Sensors (BEHAVIOUR §2.1-§2.11)."""
 
 from __future__ import annotations
 
@@ -32,7 +32,6 @@ from .entity import (
     async_add_when_ready,
 )
 from .filament import rgb_to_hex
-from .model import slot_attributes
 from .spool_image import spool_picture
 
 if TYPE_CHECKING:
@@ -43,6 +42,7 @@ if TYPE_CHECKING:
 
 # The unit text 2.x reported, capital L included (COMPAT §3 "State formats").
 UNIT_LAYERS = "Layers"
+UNIT_FILES = "files"
 
 type ValueFn = Callable[[AnycubicCoordinator], Any]
 type AttrsFn = Callable[[AnycubicCoordinator], dict[str, Any] | None]
@@ -66,8 +66,14 @@ def _minutes_dhm(minutes: int | None) -> str | None:
 
 
 def _job_eta(c: AnycubicCoordinator) -> datetime | None:
-    """now + remaining minutes, to the minute (BEHAVIOUR §1.6, G22)."""
-    remaining = c.printer.job_remaining_minutes
+    """The job's finish time when it carries one, else now + remaining
+    minutes, to the minute; no value at 0 minutes (BEHAVIOUR §1.6, G22)."""
+    printer = c.printer
+    if printer.job is None:
+        return None
+    if (end := printer.job_end_time) is not None:
+        return dt_util.utc_from_timestamp(end)
+    remaining = printer.job_remaining_minutes
     if not remaining:
         return None
     eta = dt_util.utcnow() + timedelta(minutes=remaining)
@@ -76,20 +82,62 @@ def _job_eta(c: AnycubicCoordinator) -> datetime | None:
 
 def _current_status_attrs(c: AnycubicCoordinator) -> dict[str, Any]:
     p = c.printer
+    minutes = p.print_time_total_minutes
     return {
         "model": p.identity.model_name,
         "machine_type": p.identity.model_id,
-        "supported_functions": [],
+        "supported_functions": p.supported_functions,
         "material_type": p.identity.material_type,
         "device_status_code": p.device_status,
         "is_printing_code": p.work_status,
         "print_status_code": p.job_status_code,
         "peripherals": p.peripherals,
         # Lifetime figures come from the cloud only (BEHAVIOUR §2.4).
-        "total_material_used": None,
-        "total_print_time_hrs": None,
-        "total_print_time_dhm": None,
-        "job_download_progress": None,
+        "total_material_used": p.material_used_text,
+        "total_print_time_hrs": minutes // 60 if minutes is not None else None,
+        "total_print_time_dhm": _minutes_dhm(minutes),
+        "job_download_progress": p.download_progress,
+    }
+
+
+def _slicer_value(value: Any) -> Any:
+    """Slicer values of -1 or empty are "not set" (PROTOCOL B §3.1.2)."""
+    if value in (-1, "-1", "", None):
+        return None
+    return value
+
+
+def _cloud_job_attrs(c: AnycubicCoordinator) -> dict[str, Any]:
+    """The slicer details of a cloud job; only keys with a value (§2.3)."""
+    job = c.printer.cloud_job
+    if job is None:
+        return {}
+    slice_param = job.slice_param.raw if job.slice_param is not None else {}
+    slice_result = job.slice_result or {}
+    types = _slicer_value(slice_param.get("filament_type"))
+    size = [slice_result.get(key) for key in ("size_x", "size_y", "size_z")]
+    candidates: dict[str, Any] = {
+        "source": job.source,
+        "slicer": job.settings.slicer if job.settings is not None else None,
+        "printer_profile": slice_param.get("printer_settings_id"),
+        "layer_height": slice_param.get("layer_height"),
+        "filament_types": (
+            [part.strip() for part in str(types).split(";") if part.strip()]
+            if types is not None
+            else None
+        ),
+        "nozzle_temperature": slice_param.get("temperature"),
+        "bed_temperature": slice_param.get("bed_temperature"),
+        "fill_density": slice_param.get("fill_density"),
+        "travel_speed": slice_param.get("travel_speed"),
+        "brim_type": slice_param.get("brim_type"),
+        "model_size_mm": size if all(v is not None for v in size) else None,
+        "estimated_filament": slice_result.get("used_filament"),
+    }
+    return {
+        key: value
+        for key, value in candidates.items()
+        if _slicer_value(value) is not None
     }
 
 
@@ -98,21 +146,29 @@ def _job_name_attrs(c: AnycubicCoordinator) -> dict[str, Any]:
     job = p.job
     elapsed = p.job_elapsed_minutes
     remaining = p.job_remaining_minutes
-    total = (
-        elapsed + remaining if elapsed is not None and remaining is not None else None
-    )
+    cloud_job = p.cloud_job
+    total: int | None = None
+    total_text: str | None = None
+    if cloud_job is not None and cloud_job.total_time_minutes is not None:
+        total = int(cloud_job.total_time_minutes)
+        raw = cloud_job.raw.get("total_time")
+        total_text = str(raw) if raw is not None else None
+    elif elapsed is not None and remaining is not None:
+        total = elapsed + remaining
     attrs: dict[str, Any] = {}
     if job is not None and job.filename:
         attrs["file_name"] = job.filename
+    attrs |= _cloud_job_attrs(c)
+    cloud = p.cloud if p.via_cloud else None
     # Always present (BEHAVIOUR §2.3); the slicer details are cloud only.
     attrs |= {
-        "created_timestamp": None,
-        "finished_timestamp": None,
-        "print_total_time": None,
+        "created_timestamp": cloud_job.create_time if cloud_job else None,
+        "finished_timestamp": p.job_end_time,
+        "print_total_time": total_text,
         "print_total_time_minutes": total,
         "print_total_time_dhm": _minutes_dhm(total),
         "print_supplies_usage": p.job_filament_used,
-        "print_status_message": None,
+        "print_status_message": cloud.failure_reason if cloud is not None else None,
     }
     return attrs
 
@@ -125,9 +181,15 @@ def _speed_mode_attrs(c: AnycubicCoordinator) -> dict[str, Any]:
     }
 
 
-def _target_attrs(c: AnycubicCoordinator) -> dict[str, Any]:
-    # The allowed range comes from the cloud job detail: null on LAN.
-    return {"limit_min": None, "limit_max": None}
+def _target_attrs(which: str) -> AttrsFn:
+    def attrs(c: AnycubicCoordinator) -> dict[str, Any]:
+        # The allowed range comes from the cloud job detail: null on LAN.
+        limits = c.printer.target_limits(which)
+        if limits is None:
+            return {"limit_min": None, "limit_max": None}
+        return {"limit_min": limits[0], "limit_max": limits[1]}
+
+    return attrs
 
 
 def _external_attrs(c: AnycubicCoordinator) -> dict[str, Any]:
@@ -276,12 +338,12 @@ FDM_SENSORS: tuple[AnycubicSensorDescription, ...] = (
             (
                 "target_nozzle_temp",
                 lambda c: c.printer.target_nozzle_temperature,
-                _target_attrs,
+                _target_attrs("nozzle"),
             ),
             (
                 "target_hotbed_temp",
                 lambda c: c.printer.target_hotbed_temperature,
-                _target_attrs,
+                _target_attrs("hotbed"),
             ),
         )
     ),
@@ -302,8 +364,8 @@ FDM_SENSORS: tuple[AnycubicSensorDescription, ...] = (
         key="print_speed_pct",
         kind=Kind.FDM,
         state_class=SensorStateClass.MEASUREMENT,
-        # Read from the raw print report (DECISIONS round 2, Q2.2).
-        value_fn=lambda c: c.printer.print_speed_pct,
+        # The printer's own reading, else the cloud job's (B14; Q2.2).
+        value_fn=lambda c: c.printer.print_speed,
     ),
     AnycubicSensorDescription(
         key="job_speed_mode",
@@ -509,7 +571,7 @@ def _slot_attrs(box: int, number: int) -> AttrsFn:
         slot = c.printer.ace_slot(box, number)
         if slot is None:
             return None
-        full = slot_attributes(slot, number - 1)
+        full = c.printer.slot_attributes(box, slot, number - 1)
         full.pop("color_group")
         full.pop("icon_type")
         return full
@@ -564,11 +626,142 @@ FIRST_ACE_SENSORS: tuple[AnycubicSensorDescription, ...] = (
 
 SECOND_ACE_SENSORS = _ace_sensors(1)
 
+
+def _file_list(source: str) -> ValueFn:
+    def value(c: AnycubicCoordinator) -> int | None:
+        files = c.file_list(source)
+        return len(files) if files is not None else None  # 0 when empty (G12)
+
+    return value
+
+
+def _file_list_attrs(source: str) -> AttrsFn:
+    def attrs(c: AnycubicCoordinator) -> dict[str, Any] | None:
+        files = c.file_list(source)
+        return {"file_info": files} if files is not None else None
+
+    return attrs
+
+
+def _hours(c: AnycubicCoordinator) -> int | None:
+    """Whole hours, rounded down; no value when the text is absent (G11)."""
+    minutes = c.printer.print_time_total_minutes
+    return minutes // 60 if minutes is not None else None
+
+
+def _resin(name: str) -> ValueFn:
+    return lambda c: c.printer.resin_setting(name)
+
+
+# The cloud-only sensors (BEHAVIOUR §2.3-§2.5, §2.11). Not created on
+# LAN-only entries (DECISIONS round 2, Q8).
+CLOUD_SENSORS: tuple[AnycubicSensorDescription, ...] = (
+    *(
+        AnycubicSensorDescription(
+            key=f"file_list_{source}",
+            cloud_only=True,
+            native_unit_of_measurement=UNIT_FILES,
+            value_fn=_file_list(source),
+            attrs_fn=_file_list_attrs(source),
+        )
+        for source in ("local", "udisk", "cloud")
+    ),
+    AnycubicSensorDescription(
+        key="job_z_thick",
+        cloud_only=True,
+        # Millimetres, deliberately without a declared unit (BEHAVIOUR §8).
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda c: c.printer.job_z_thick,
+    ),
+    AnycubicSensorDescription(
+        key="material_used_total",
+        cloud_only=True,
+        native_unit_of_measurement=UnitOfMass.KILOGRAMS,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: c.printer.material_used_kg,
+    ),
+    AnycubicSensorDescription(
+        key="print_time_total_hrs",
+        cloud_only=True,
+        native_unit_of_measurement=UnitOfTime.HOURS,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_hours,
+    ),
+    AnycubicSensorDescription(
+        key="print_count_total",
+        cloud_only=True,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda c: c.printer.print_count_total,
+    ),
+)
+
+# Resin printers (BEHAVIOUR §2.11): cloud only, from the job's settings.
+RESIN_SENSORS: tuple[AnycubicSensorDescription, ...] = (
+    *(
+        AnycubicSensorDescription(
+            key=key,
+            kind=Kind.LCD,
+            cloud_only=True,
+            native_unit_of_measurement=UnitOfTime.SECONDS,
+            device_class=SensorDeviceClass.DURATION,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_resin(name),
+        )
+        for key, name in (
+            ("job_on_time", "on_time"),
+            ("job_off_time", "off_time"),
+            ("job_bottom_time", "bottom_time"),
+        )
+    ),
+    *(
+        AnycubicSensorDescription(
+            key=key,
+            kind=Kind.LCD,
+            cloud_only=True,
+            native_unit_of_measurement=UnitOfLength.MILLIMETERS,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_resin(name),
+        )
+        for key, name in (
+            ("job_model_height", "model_hight"),
+            ("job_z_up_height", "z_up_height"),
+        )
+    ),
+    AnycubicSensorDescription(
+        key="job_bottom_layers",
+        kind=Kind.LCD,
+        cloud_only=True,
+        native_unit_of_measurement=UNIT_LAYERS,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_resin("bottom_layers"),
+    ),
+    # No unit declared (BEHAVIOUR §9, V5).
+    *(
+        AnycubicSensorDescription(
+            key=key,
+            kind=Kind.LCD,
+            cloud_only=True,
+            state_class=SensorStateClass.MEASUREMENT,
+            value_fn=_resin(name),
+        )
+        for key, name in (
+            ("job_anti_alias_count", "anti_count"),
+            ("job_z_up_speed", "z_up_speed"),
+            ("job_z_down_speed", "z_down_speed"),
+        )
+    ),
+)
+
 SENSORS: tuple[AnycubicSensorDescription, ...] = (
     *PRINTER_SENSORS,
     *FDM_SENSORS,
     *FIRST_ACE_SENSORS,
     *SECOND_ACE_SENSORS,
+    *CLOUD_SENSORS,
+    *RESIN_SENSORS,
 )
 
 

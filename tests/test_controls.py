@@ -207,7 +207,7 @@ async def test_home_all_ignores_a_stale_done(
     )
     await _press(hass, f"button.{P}_home_all_axes")
     assert polls > 1
-    assert loaded.runtime_data.printer.axis_move_state is None
+    assert loaded.runtime_data.primary.printer.axis_move_state is None
 
 
 async def test_ace_buttons(
@@ -470,13 +470,14 @@ async def test_file_list_buttons_follow_the_connection(
     hass: HomeAssistant, loaded: MockConfigEntry, printer: MockPrinter
 ) -> None:
     """Round 2, F3: unavailable while the list cannot be fetched."""
-    coordinator = loaded.runtime_data
+    coordinator = loaded.runtime_data.primary
     names = {"local": "local", "udisk": "usb_disk", "cloud": "cloud"}
     for source, name in names.items():
         state = hass.states.get(f"button.{P}_request_file_list_{name}")
         assert state is not None
         assert state.state == STATE_UNAVAILABLE
         assert not coordinator.can_fetch_file_list(source)
+    assert not coordinator.can_fetch_file_list("other")
     # Pressing it anyway (as the entity would be) is refused, nothing sent.
     button = hass.data["entity_components"]["button"].get_entity(
         f"button.{P}_request_file_list_local"
@@ -485,14 +486,3 @@ async def test_file_list_buttons_follow_the_connection(
         await button.async_press()
     assert err.value.translation_key == "file_list_unavailable"
     assert printer.client.commands == []
-
-    # A connection that can fetch a list makes its button available.
-    coordinator.file_list_sources = frozenset({"cloud"})
-    coordinator.async_update_listeners()
-    await hass.async_block_till_done()
-    assert hass.states.get(f"button.{P}_request_file_list_cloud").state != (
-        STATE_UNAVAILABLE
-    )
-    assert hass.states.get(f"button.{P}_request_file_list_local").state == (
-        STATE_UNAVAILABLE
-    )

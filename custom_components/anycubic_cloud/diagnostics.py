@@ -1,9 +1,11 @@
 """Diagnostics with every secret redacted (COMPAT §6, anycubic-lan HW4).
 
-Redacted: the pasted token and cloud session fields, LAN broker credentials,
-the discovery token, the serial number, the MAC, and the signed upload URL -
-by key (``fileUploadurl``/``file_upload_url``) and, as a second net, any
-string containing ``gcode_upload?s=`` wherever it appears.
+Redacted: the pasted token and cloud session fields, the account's e-mail,
+mobile and other personal fields (the entry title is the e-mail), LAN broker
+credentials, the discovery token, serial numbers, MACs and printer keys,
+signed URLs and camera credentials - by key and, as a second net, any string
+that carries a URL signature, wherever it appears. Anycubic's app
+credentials are never collected at all.
 """
 
 from __future__ import annotations
@@ -18,10 +20,12 @@ from homeassistant.components.diagnostics import REDACTED, async_redact_data
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
 
-    from .coordinator import AnycubicConfigEntry
+    from .coordinator import AnycubicConfigEntry, AnycubicCoordinator, AnycubicRuntime
 
 TO_REDACT = {
     # cloud entry data and session store (COMPAT §1, §6)
+    "title",
+    "unique_id",
     "user_token",
     "user_device_id",
     "auth_token",
@@ -29,6 +33,21 @@ TO_REDACT = {
     "app_secret",
     "app_client_id",
     "app_id",
+    "appid",
+    # the account (PROTOCOL A §2.6.1)
+    "user_email",
+    "email",
+    "mobile",
+    "user_id",
+    "user_nickname",
+    "casdoor_user",
+    "casdoor_user_id",
+    "message_key",
+    "last_login_ip",
+    "ip_country",
+    "ip_province",
+    "ip_city",
+    "birthday",
     # LAN handshake and discovery document
     "token",
     "username",
@@ -36,17 +55,36 @@ TO_REDACT = {
     "cn",
     "usn",
     "serial",
+    "sn",
     "fileUploadurl",
     "fileuploadurl",
     "file_upload_url",
-    # identifiers
+    # printer identifiers
     "mac",
+    "machine_mac",
     "connection_mac",
     "device_id",
     "deviceId",
+    "device_unionid",
+    "key",
+    "printer_key",
+    "ip",
+    # signed URLs and camera credentials
+    "url",
+    "thumbnail",
+    "preSignUrl",
+    "img",
+    "image_url",
+    "rtc_token",
+    "channel",
+    "client_uid",
+    "encryption_key",
+    "encryption_kdf_salt",
+    "event_id",
 }
 
-_SIGNED_UPLOAD = "gcode_upload?s="
+# Any string carrying one of these is a signed URL or credential.
+_SIGNED_MARKERS = ("gcode_upload?s=", "X-Amz-", "Signature=", "signature=")
 
 
 def _plain(value: Any) -> Any:
@@ -55,6 +93,7 @@ def _plain(value: Any) -> Any:
         return {
             field.name: _plain(getattr(value, field.name))
             for field in dataclasses.fields(value)
+            if not field.name.startswith("_")
         }
     if isinstance(value, Mapping):
         return {str(key): _plain(item) for key, item in value.items()}
@@ -66,9 +105,9 @@ def _plain(value: Any) -> Any:
 
 
 def _scrub(value: Any) -> Any:
-    """Replace any string that carries a signed upload URL."""
+    """Replace any string that carries a signed URL."""
     if isinstance(value, str):
-        return REDACTED if _SIGNED_UPLOAD in value else value
+        return REDACTED if any(m in value for m in _SIGNED_MARKERS) else value
     if isinstance(value, dict):
         return {key: _scrub(item) for key, item in value.items()}
     if isinstance(value, list):
@@ -76,24 +115,15 @@ def _scrub(value: Any) -> Any:
     return value
 
 
-async def async_get_config_entry_diagnostics(
-    hass: HomeAssistant, entry: AnycubicConfigEntry
-) -> dict[str, Any]:
-    """Diagnostics of a config entry."""
-    coordinator = entry.runtime_data
+def _printer(coordinator: AnycubicCoordinator) -> dict[str, Any]:
     link = coordinator.link
-    info = link.info
+    info = link.info if link is not None else None
     printer = coordinator.printer if coordinator.has_printer else None
-    result: dict[str, Any] = {
-        "entry": {
-            "title": entry.title,
-            "version": entry.version,
-            "minor_version": entry.minor_version,
-            "data": dict(entry.data),
-            "options": dict(entry.options),
-        },
+    cloud = printer.cloud if printer is not None else None
+    return {
         "connection": {
-            "connected": link.connected,
+            "source": printer.source if printer is not None else None,
+            "lan_connected": coordinator.lan_connected,
             "last_update_success": coordinator.last_update_success,
             "discovery": info.discovery.as_redacted_dict() if info else None,
             "model_id": info.model_id if info else None,
@@ -117,8 +147,69 @@ async def async_get_config_entry_diagnostics(
             if printer
             else None
         ),
+        "cloud": (
+            {
+                "detail": _plain(cloud.detail.raw) if cloud.detail else None,
+                "job": _plain(cloud.job.raw) if cloud.job else None,
+                "job_detail": _plain(cloud.job_detail.raw)
+                if cloud.job_detail
+                else None,
+                "device_status": cloud.device_status,
+                "work_status": cloud.work_status,
+                "removed": cloud.removed,
+                "download_progress": cloud.download_progress,
+                "file_lists": _plain(cloud.file_lists),
+                "firmware": _plain(cloud.firmware),
+                "ace_firmware": _plain(cloud.ace_firmware),
+                "faults": _plain(cloud.faults),
+            }
+            if cloud is not None
+            else None
+        ),
         "forecast": _plain(coordinator.forecast),
-        "ledger": coordinator.ledger.data,
-        "capabilities": coordinator.capability_data,
+    }
+
+
+def _account(runtime: AnycubicRuntime) -> dict[str, Any] | None:
+    account = runtime.cloud
+    if account is None:
+        return None
+    client = account.client
+    mqtt = account.mqtt
+    return {
+        "region": account.region.value,
+        "auth_mode": int(client.auth_mode) if client is not None else None,
+        "account": _plain(account.account.raw) if account.account else None,
+        "last_poll_ok": account.last_poll_ok,
+        "mqtt": {
+            "mode": mqtt.mode,
+            "possible": mqtt.possible,
+            "supports_login": mqtt.supports_login,
+            "active": mqtt.active,
+            "connected": mqtt.connected,
+            "manual": mqtt.manual,
+            "last_error": mqtt.last_error,
+        },
+        "cloud_files": _plain(account.cloud_files),
+    }
+
+
+async def async_get_config_entry_diagnostics(
+    hass: HomeAssistant, entry: AnycubicConfigEntry
+) -> dict[str, Any]:
+    """Diagnostics of a config entry."""
+    runtime = entry.runtime_data
+    result: dict[str, Any] = {
+        "entry": {
+            "title": entry.title,
+            "version": entry.version,
+            "minor_version": entry.minor_version,
+            "data": dict(entry.data),
+            "options": dict(entry.options),
+        },
+        "cloud": _account(runtime),
+        "printers": [_printer(c) for c in runtime.coordinators.values()],
+        "ledger": runtime.ledger.data,
+        "capabilities": runtime.capability_data,
     }
     return _scrub(async_redact_data(result, TO_REDACT))  # type: ignore[no-any-return]

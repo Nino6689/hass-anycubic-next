@@ -11,6 +11,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 
 from .entity import (
     AnycubicEntity,
@@ -47,6 +48,19 @@ def _external_loaded(c: AnycubicCoordinator) -> bool | None:
 
 def _insufficient(c: AnycubicCoordinator) -> bool | None:
     return c.forecast.insufficient if c.forecast is not None else None
+
+
+def _mqtt_active(c: AnycubicCoordinator) -> bool:
+    cloud = c.runtime.cloud
+    return cloud is not None and cloud.mqtt.active
+
+
+def _mqtt_attrs(c: AnycubicCoordinator) -> dict[str, Any]:
+    cloud = c.runtime.cloud
+    return {
+        "supports_mqtt_login": cloud is not None and cloud.mqtt.supports_login,
+        "last_error": cloud.mqtt.last_error if cloud is not None else None,
+    }
 
 
 BINARY_SENSORS: tuple[AnycubicBinarySensorDescription, ...] = (
@@ -113,6 +127,13 @@ BINARY_SENSORS: tuple[AnycubicBinarySensorDescription, ...] = (
         attrs_fn=lambda c: {
             "secondary_dry_status_code": c.printer.drying_status_code(1)
         },
+    ),
+    AnycubicBinarySensorDescription(
+        key="mqtt_connection_active",
+        cloud_only=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=_mqtt_active,
+        attrs_fn=_mqtt_attrs,
     ),
 )
 
