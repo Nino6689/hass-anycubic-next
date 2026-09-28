@@ -41,7 +41,8 @@ if TYPE_CHECKING:
 
     from .coordinator import AnycubicConfigEntry, AnycubicCoordinator
 
-UNIT_LAYERS = "layers"
+# The unit text 2.x reported, capital L included (COMPAT §3 "State formats").
+UNIT_LAYERS = "Layers"
 
 type ValueFn = Callable[[AnycubicCoordinator], Any]
 type AttrsFn = Callable[[AnycubicCoordinator], dict[str, Any] | None]

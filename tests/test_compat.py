@@ -3,10 +3,18 @@
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import Platform
+from homeassistant.const import (
+    PERCENTAGE,
+    Platform,
+    UnitOfLength,
+    UnitOfMass,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import (
     device_registry as dr,
@@ -353,3 +361,49 @@ async def test_printer_without_mac(hass: HomeAssistant, printer: MockPrinter) ->
     assert device is not None
     assert device.connections == set()
     assert entry.state is ConfigEntryState.LOADED
+
+
+# COMPAT §3 writes Home Assistant's unit constants by name; any other unit is
+# the literal text, quoted.
+_COMPAT_UNITS = {
+    "CELSIUS": UnitOfTemperature.CELSIUS,
+    "GRAMS": UnitOfMass.GRAMS,
+    "HOURS": UnitOfTime.HOURS,
+    "KILOGRAMS": UnitOfMass.KILOGRAMS,
+    "MILLIMETERS": UnitOfLength.MILLIMETERS,
+    "MINUTES": UnitOfTime.MINUTES,
+    "PERCENTAGE": PERCENTAGE,
+    "SECONDS": UnitOfTime.SECONDS,
+}
+
+
+def _compat_units() -> dict[tuple[str, str], str]:
+    """(platform, key) -> unit for every COMPAT §3 row that names a unit."""
+    units: dict[tuple[str, str], str] = {}
+    text = (Path(__file__).parents[1] / "docs" / "COMPAT.md").read_text("utf-8")
+    for line in text.splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 5 or not cells[0].startswith("`") or not cells[4]:
+            continue
+        key, platform, unit = cells[0].strip("`"), cells[1], cells[4]
+        units[platform, key] = _COMPAT_UNITS.get(unit, unit.strip("`'"))
+    return units
+
+
+def test_units_are_compat_text() -> None:
+    """Every unit COMPAT names is reproduced exactly, case included (U1)."""
+    from custom_components.anycubic_cloud.number import NUMBERS
+    from custom_components.anycubic_cloud.sensor import SENSORS
+
+    compat = _compat_units()
+    assert compat["sensor", "job_current_layer"] == "Layers"
+    descriptions = {("sensor", d.key): d for d in SENSORS} | {
+        ("number", d.key): d for d in NUMBERS
+    }
+    checked = [
+        (platform_key, descriptions[platform_key].native_unit_of_measurement, unit)
+        for platform_key, unit in compat.items()
+        if platform_key in descriptions
+    ]
+    assert len(checked) > 30
+    assert [c for c in checked if c[1] != c[2]] == []
