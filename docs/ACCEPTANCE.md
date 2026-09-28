@@ -47,3 +47,27 @@ and read unavailable, which is answer F3 applied as specified. **Accepted.**
 
 - U1, U2 and U3 are still open. This build predates the report.
 - U4 did not reproduce in this run: the push task ended before shutdown. Keep the fix anyway. The warning appears whenever a report is still being coalesced when Home Assistant stops.
+
+### Commands on hardware, `60d851a`
+
+These were run from the 3.0 build through Home Assistant against the real printer, with the live 2.x
+install reading the same printer as a witness. Only harmless controls were used. Light off, then on; part fan to
+20 %, then back to 0 %. Every call returned 200, and 3.0 and the 2.x witness both saw each change within 8 s. **Passed.**
+
+### Attributes, `60d851a`
+
+Every attribute of every entity was compared with live 2.x. These differences are **accepted**:
+
+- `consumables_percent` and `icon_type` in the ACE slot lists are empty on LAN. LAN reports don't carry them, and 2.x showed a made-up `0`.
+- `box_info.feed_status` is empty. The last report carried `null`; 2.x kept a stale feed result.
+- `box_info.loaded_slot` reads 1. It now agrees with the `ace_loaded_slot` sensor, where 2.x's attribute said null while the sensor said 1.
+- `current_status`: `job_download_progress` and `total_print_time_*` are empty on LAN. They come from the cloud; 2.x showed zeros.
+- `job_speed_mode` `available_modes` is `[]` on LAN, as BEHAVIOUR states.
+- `job_cost` and `last_job_cost` have no `measurement` state class, as COMPAT lists. Home Assistant rejects `measurement` for monetary sensors. Upgraders will see a one-off "no longer has a state class" note in the statistics tools. That goes in the release notes.
+- `spool_inventory_remaining`: one reel reads 0.2 g lower. This is the reel-memory re-sync accepted above.
+
+**To fix.**
+
+| # | Observed | Expected |
+|---|---|---|
+| U5 | On LAN, the printer firmware update entity sets `latest_version` to the installed version, so it claims "up to date". | BEHAVIOUR G10: `installed_version` comes from LAN `info.version` (done), and `latest_version` stays **unknown** until the cloud supplies a target. Never copy the installed version into it. |
