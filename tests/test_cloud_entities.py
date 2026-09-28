@@ -95,6 +95,8 @@ async def test_status_and_job_attributes(
         {"description": "Standard", "mode": 2},
         {"description": "Sport", "mode": 3},
     ]
+    # A whole number of millimetres, as 2.x reports it (acceptance X1).
+    assert _state(hass, f"sensor.{P}_job_filament_used").state == "31783"
     assert _state(hass, f"sensor.{P}_job_z_thickness").state == "0.2"
     assert _state(hass, f"sensor.{P}_total_material_used").state == "18.17"
     assert _state(hass, f"sensor.{P}_total_print_time").state == "798"

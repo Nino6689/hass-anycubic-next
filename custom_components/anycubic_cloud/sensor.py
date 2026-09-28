@@ -57,6 +57,10 @@ class AnycubicSensorDescription(AnycubicEntityDescription, SensorEntityDescripti
     monetary: bool = False
 
 
+def _whole(value: float | None) -> int | None:
+    return round(value) if value is not None else None
+
+
 def _minutes_dhm(minutes: int | None) -> str | None:
     if minutes is None:
         return None
@@ -299,7 +303,8 @@ PRINTER_SENSORS: tuple[AnycubicSensorDescription, ...] = (
         key="job_filament_used",
         native_unit_of_measurement=UnitOfLength.MILLIMETERS,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda c: c.printer.job_filament_used,
+        # A whole number of millimetres, as 2.x reports it (COMPAT §3).
+        value_fn=lambda c: _whole(c.printer.job_filament_used),
     ),
     *(
         AnycubicSensorDescription(
