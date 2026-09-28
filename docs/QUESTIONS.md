@@ -26,6 +26,8 @@ which the implementation team has no description of. **Interim choice**
 
 What are the exact `data` objects the printer accepts for each?
 
+**Applied in round 2.**
+
 ## Q2 — Public hooks missing from anycubic-lan 0.1.0
 
 *Asked by the implementation team (Phase B, LAN), 2026-09-28.*
@@ -43,6 +45,8 @@ What are the exact `data` objects the printer accepts for each?
 3. anycubic-lan's `ACE_MODELS` still maps `40002` to "ACE Pro"; PROTOCOL
    §6.7 now says `40001`. The integration uses its own table (COMPAT §2).
 
+**Applied in round 2.**
+
 ## Q3 — Shape of the `extfilbox` report
 
 *Asked by the implementation team (Phase B, LAN), 2026-09-28.*
@@ -55,6 +59,8 @@ itself, or `data.external_shelves` when present; material from `type`, else
 holder is absent when `id`, material and `loaded` are all missing. What are
 the real keys?
 
+**Applied in round 2.**
+
 ## Q4 — Unique ids of a printer that reports no MAC
 
 *Asked by the implementation team (Phase B, LAN), 2026-09-28.*
@@ -65,6 +71,8 @@ says what entity unique ids use. **Interim choice** (`coordinator.py`): the
 broker's `deviceId`, upper-cased, in place of the MAC. Did 2.x do something
 else here?
 
+**Applied in round 2.**
+
 ## Q5 — Hybrid entry covering several printers
 
 *Asked by the implementation team (Phase B, LAN), 2026-09-28.*
@@ -73,6 +81,8 @@ A cloud entry may list several `printer_ids`, but LAN Mode reaches one
 printer (`options.lan_host`). Without the cloud there is no way to tell which
 id it is. **Interim choice**: the first id in `printer_ids`, with a warning in
 the log. Is there a better rule (in 2.x, the cloud matched it by model id)?
+
+**Applied in round 2.**
 
 ## Q6 — How the frontend bundles reach the integration
 
@@ -86,6 +96,8 @@ when it contains `anycubic-card.js` and one `entrypoint*.js`; the panel's
 component name is `anycubic-cloud-panel`. Nothing is registered when the
 bundles are absent. Which interface should the integration use?
 
+**Applied in round 2.**
+
 ## Q7 — 2.x cloud entries during the LAN-only beta
 
 *Asked by the implementation team (Phase B, LAN), 2026-09-28.*
@@ -95,6 +107,8 @@ back-off) and gets a warning repair issue `cloud_not_supported_yet_<entry id>`
 explaining that cloud support arrives in a later beta; its data and options
 are never touched. Confirm this is the wanted user experience (the
 alternative is a terminal setup error, which stops the retries).
+
+**Applied in round 2.**
 
 ## Q8 — Cloud-only entities left in the registry of LAN entries
 
@@ -106,6 +120,8 @@ alternative is a terminal setup error, which stops the retries).
 shows them as "no longer provided". **Interim choice**: leave them in the
 registry (the user can delete them; nothing is removed automatically). Should
 3.0 remove them, or keep providing them as always unavailable?
+
+**Applied in round 2.**
 
 ## Q9 — Entity names and DHCP matchers
 
@@ -121,3 +137,5 @@ registry (the user can delete them; nothing is removed automatically). Should
 2. COMPAT does not list the manifest's DHCP matchers. **Interim choice**:
    anycubic-lan PROTOCOL §8 — MAC prefix `A4E88D*`, hostnames `anycubic*`
    and `kobra*`.
+
+**Applied in round 2.**
