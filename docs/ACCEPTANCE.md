@@ -127,3 +127,32 @@ The full run was repeated: the upgrade test over the 2.x snapshot, the hardware 
 | M1 | The Tests workflow's `ruff check .` now also covers `frontend/python/tests/test_package.py`, and fails there with 12 errors: I001 (import order) and PT009 (unittest-style `assertEqual`/`assertTrue`). Mypy, both pytest jobs and the Frontend workflow pass. | `main` is green. Bring `frontend/python/tests` in line with the repository's ruff rules. Don't exclude it. |
 
 M1: **Fixed in dee3e61.**
+
+## Cloud half — 2026-09-28, `clean/cloud` @ `a60314f` (PR #4) with `anycubic-cloud-client` v0.1.0
+
+**Method.** The upgrade test over a fresh snapshot of the live 2.x install, with the printer now on the cloud (LAN Mode off). It was run twice:
+the entry as it is, with its LAN option on (hybrid, where LAN is unreachable and the entry falls back to the cloud), and with the LAN option off (pure cloud). The
+test HA reused the live install's saved tokens, so no second token exchange was needed. The run also included a fresh cloud setup through the real
+config flow in an empty Home Assistant, the hardware commands, and the panel and card in WebKit.
+
+**Passed.**
+
+- Both variants: the entry loads, and its data, options and version are untouched. All 132 unique ids re-attach with no id changes and no new entities.
+  **All 132 are provided**, cloud-only ones included (the file lists, the MQTT entities, the cloud camera, the job preview, the lifetime totals and ACE firmware).
+- **127 of 129 compared entities match live 2.x exactly in value and unit.** The two differences are `job_preview`, where 3.0 has the image
+  and 2.x reads `unknown` (accepted, an improvement), and X1 below. Attributes are identical apart from differences already accepted: `loaded_slot`,
+  `job_download_progress` empty while idle, and the monetary `state_class`.
+- Devices are kept. On the cloud the ACE device also gains its firmware version (`1.3.863`), where 2.x left it blank.
+- Hardware commands over the cloud: the light and the part fan are both reported back.
+- **A fresh cloud setup through the config flow**: menu → token (signs in within 1.2 s) → printer (lists the Kobra S1) → entry. The entry has
+  2.x's data keys, unique id = user id, mode 3, and a token store and ledger are written. All 132 entity keys are registered, and the log is free of warnings.
+- The panel with cloud data shows the last job at 100 % with its preview image, "Done at Sat 21:32" (F6), and firmware and colour-box updates as "Current".
+- The Home Assistant log has no warnings from the integration.
+
+**To fix.**
+
+| # | Observed | Expected |
+|---|---|---|
+| X1 | `job_filament_used` reads `65.0`. | `65`, the whole number of millimetres, as 2.x reports it (COMPAT §3 'State formats'). |
+| X2 | Over the cloud every ACE reel in the card and panel art is drawn **empty**. `consumables_percent` is 0 for every slot, as BEHAVIOUR says it always is. | Fill each reel from the slot's `ace_slot_N_filament_remaining_percent` (`secondary_…` for ACE 2). Unknown = full. Never use `consumables_percent` (FRONTEND.md corrected; DECISIONS 'Reel fill'). |
+| X3 | The cloud camera doesn't stream. HA shows *"Could not open the Anycubic cloud camera: The camera channel is encrypted: pass the Agora SDK public key"*. | This is fixed in the library (its ACCEPTANCE L3: the key becomes its default). Once the library is updated, the integration needs no key handling of its own. Re-test the stream after that. |

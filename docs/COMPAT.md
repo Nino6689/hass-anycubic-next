@@ -88,6 +88,7 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 
 - Units are the exact strings in the tables, case included — e.g. `Layers` with a capital L. A changed unit also breaks long-term statistics.
 - `number` entities report their value as a **float**, so the state reads `45.0`, `360.0`, `0.0` — never `45`.
+- A sensor keeps the number type 2.x gave it: `job_filament_used` is a whole number of millimetres (`65`, not `65.0`).
 
 ### 3.1 Observed on a live install (Kobra S1 + one ACE Pro)
 
