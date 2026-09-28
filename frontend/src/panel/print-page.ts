@@ -72,7 +72,8 @@ export class AnycubicPrintPage extends LitElement {
       return;
     }
     const slots = parseSlots(this.slots);
-    if (needsSlots && slots === undefined) {
+    // A printer with a colour box needs at least one slot (BEHAVIOUR.md §4.4).
+    if (needsSlots && (slots === undefined || slots.length === 0)) {
       this.error = this.t("panels.print.slots_invalid");
       return;
     }
@@ -81,7 +82,7 @@ export class AnycubicPrintPage extends LitElement {
     try {
       const fileId = await this.upload(this.file);
       const data: Record<string, unknown> = { uploaded_gcode_file: fileId };
-      if (needsSlots && slots && slots.length) data.slot_number = slots;
+      if (needsSlots && slots) data.slot_number = slots;
       await callAction(this.hass!, p, `print_and_upload_${this.mode}`, data);
       this.status = "done";
       haptic("success");

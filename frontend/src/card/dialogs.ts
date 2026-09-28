@@ -388,9 +388,14 @@ export class AnycubicDrying extends CardDialog {
   protected override render() {
     const p = this.printer;
     const prefix = this.unit === 1 ? "secondary_" : "";
+    const positive = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
+    // A preset exists only with both a duration and a temperature (§4.11).
     const presets = [1, 2, 3, 4]
-      .map((n) => ({ n, key: `${prefix}drying_start_preset_${n}` }))
-      .filter(({ key }) => p?.usable(key, "button"));
+      .map((n) => {
+        const key = `${prefix}drying_start_preset_${n}`;
+        return { n, key, duration: p?.attr<number>(key, "duration", "button"), temp: p?.attr<number>(key, "temperature", "button") };
+      })
+      .filter(({ key, duration, temp }) => p?.usable(key, "button") && positive(duration) && positive(temp));
     const stopKey = `${prefix}drying_stop`;
     return html`<anycubic-dialog
       .open=${this.open}
@@ -398,12 +403,10 @@ export class AnycubicDrying extends CardDialog {
       .closeLabel=${this.t("common.actions.close")}
     >
       <div class="stack">
-        ${presets.map(({ n, key }) => {
-          const duration = p?.attr<number>(key, "duration", "button");
-          const temp = p?.attr<number>(key, "temperature", "button");
+        ${presets.map(({ n, key, duration, temp }) => {
           return html`<button class="btn" ?disabled=${this.busy} @click=${() => this.run(() => pressButton(this.hass!, p!, key))}>
-            ${this.t("card.drying_settings.button_preset", { number: n })} — ${duration ?? "?"}
-            ${this.t("card.drying_settings.button_minutes")} @ ${temp ?? "?"}°C
+            ${this.t("card.drying_settings.button_preset", { number: n })} — ${duration}
+            ${this.t("card.drying_settings.button_minutes")} @ ${temp}°C
           </button>`;
         })}
         ${p?.id(stopKey, "button")
