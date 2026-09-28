@@ -78,3 +78,11 @@ changes 2.x behaviour it is deliberate, and noted.
 | **F4** state words | The integration will ship **entity state translations** for `job_state` and `current_status`; prefer Home Assistant's own state formatting, falling back to your strings for unknown words. |
 | **F5** disabled entities | Correct as built. |
 | **F6** ETA beyond today | **Add the day** (short weekday) when the end is not today. |
+
+## Cloud half — decisions (Nino, 2026-09-28)
+
+| Topic | Decision |
+|---|---|
+| Timing | Build the cloud half **now**, on the same unofficial access 2.x uses, so testers get cloud and LAN. Don't wait for Anycubic's reply. If Anycubic grants an official API later, the client library moves to it. |
+| Anycubic's credentials | Loaded at run time from the installed `anycubic-cloud-api` package (`CLOUD.md` §1). They are never copied into this repository or into `anycubic-cloud-client`. |
+| Phases B and C | Merged into `main` (#2, #1). The cloud work builds on `main`. |
