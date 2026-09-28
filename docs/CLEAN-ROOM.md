@@ -24,6 +24,7 @@ code is compared mechanically with the GPL projects before release.
 | 2026-09-28 | Specification | Claude (local, Nino's machine) | The 2.x integration (`anycubic_cloud` 2.9.3) and library (`anycubic-cloud-api` 0.4.31) code and tests, read for facts; `Nino6689/anycubic-lan` docs | `BEHAVIOUR.md`; corrections to `COMPAT.md` §1, §4, §5, §7 | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local, frontend agent) | The 2.x frontend panel and card, read for facts | `FRONTEND.md` | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local) | `BEHAVIOUR.md` §9 and `FRONTEND.md` §7 open items; 2.x `icons.json` | `DECISIONS.md`; COMPAT §3.3 icons; V8 source allowed above | n/a — specification team |
+| 2026-09-28 | Implementation | Claude (cloud session, Phase C frontend, branch `clean/frontend`) | This repository's `docs/` (`FRONTEND.md`, `DECISIONS.md`, `COMPAT.md`, `BEHAVIOUR.md`); the npm packages Lit, @mdi/js, TypeScript, Rollup, Vitest and ESLint, installed from the registry; no web searches | `frontend/` (card, panel, strings, artwork, tests, `anycubic-cloud-frontend` Python package), `.github/workflows/frontend.yaml`, questions F1–F6 in `QUESTIONS.md` | Yes — none of the excluded repositories or packages, and no other printer card or panel, were opened, fetched, searched for or quoted |
 
 ## Similarity checks
 
