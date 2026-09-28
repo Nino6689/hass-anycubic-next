@@ -146,7 +146,8 @@ class TokenStore:
 
     The pasted token on the entry is authoritative; this is a cache of what
     was derived from it (rule 1). The library exports only the four token
-    keys, never Anycubic's app credentials.
+    keys, never Anycubic's app credentials: 2.x's app keys are dropped on
+    the first save (E2-Q8 in docs/QUESTIONS.md).
     """
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
@@ -445,7 +446,11 @@ class CloudAccount:
             await self._async_poll_once()
         except CredentialsRejectedError as err:
             if not is_rate_limited(err):
+                # Re-authentication; until then every refresh fails with it.
                 self._next_due = self._clock() + CLOUD_POLL_INTERVAL
+                self._error = UpdateFailed(
+                    translation_domain=DOMAIN, translation_key="token_rejected"
+                )
                 raise ConfigEntryAuthFailed(
                     translation_domain=DOMAIN, translation_key="token_rejected"
                 ) from err
@@ -465,6 +470,8 @@ class CloudAccount:
             delay += CLOUD_POLL_PAUSE
         self._next_due = self._clock() + delay
         if not self._outage_logged:
+            # Once per outage (§5.5); the coordinator adds its own standard
+            # line (E2-Q7 in docs/QUESTIONS.md).
             _LOGGER.warning("The Anycubic cloud is not answering: %s", err)
             self._outage_logged = True
         self._error = UpdateFailed(

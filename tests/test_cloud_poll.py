@@ -154,6 +154,10 @@ async def test_rejected_token_during_a_poll_asks_for_reauth(
     clock.now += 61
     await _refresh(hass, loaded)
     assert len(_reauth(hass)) == 1
+    # Until the new token arrives, no stale values between polls either.
+    clock.now += 15
+    await _refresh(hass, loaded)
+    assert hass.states.get(NOZZLE).state == STATE_UNAVAILABLE
 
 
 async def test_unexpected_error_during_a_poll_is_not_reauth(

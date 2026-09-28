@@ -23,7 +23,6 @@ from anycubic_cloud_client import (
 )
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers import device_registry as dr
 import pytest
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
@@ -33,7 +32,7 @@ from custom_components.anycubic_cloud.const import DOMAIN
 
 from . import cloud_payloads as cp
 from .cloud_fakes import FakeCloud
-from .conftest import account_entry, setup_entry
+from .conftest import account_entry, find_device, setup_entry
 
 P = "kobra_s1_cloud"
 PID = cp.PRINTER_ID
@@ -448,9 +447,7 @@ async def test_print_and_upload(
     assert kwargs["slots"] == [1]
     assert len(kwargs["ace_units"]) == 1
     (event,) = events
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, f"{cp.USER_ID}-{PID}")}
-    )
+    device = find_device(hass, f"{cp.USER_ID}-{PID}")
     assert event.data == {
         "printer_id": PID,
         "printer_name": "Kobra S1 Cloud",
@@ -565,9 +562,7 @@ async def test_print_and_upload_failures(
 async def test_actions_by_device(
     hass: HomeAssistant, loaded: MockConfigEntry, cloud: FakeCloud
 ) -> None:
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, f"{cp.USER_ID}-{PID}")}
-    )
+    device = find_device(hass, f"{cp.USER_ID}-{PID}")
     await _call(
         hass,
         "change_print_fan_speed",

@@ -243,6 +243,7 @@ class AnycubicConfigFlow(ConfigFlow, domain=DOMAIN):
         entry = self._entry_being_changed()
         if entry is not None:
             if entry.unique_id and entry.unique_id != unique_id:
+                # Another account's token (E2-Q6 in docs/QUESTIONS.md).
                 return self.async_abort(reason="wrong_account")
             if legacy:
                 # The legacy steps neither clear the store nor reload (§5.8).
@@ -271,7 +272,8 @@ class AnycubicConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_auth_mode_pick(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Not offered by any menu, as in 2.x; kept for their step ids."""
+        """Not offered by any menu, as in 2.x; kept for their step ids
+        (E2-Q4 in docs/QUESTIONS.md)."""
         return self.async_show_menu(
             step_id="auth_mode_pick", menu_options=list(LEGACY_MODES)
         )

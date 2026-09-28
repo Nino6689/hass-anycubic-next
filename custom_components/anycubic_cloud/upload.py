@@ -134,8 +134,16 @@ def _event_data(
     """The event of a started cloud print (§4.8). ``device_id`` is the device
     of the printer this call targeted (G17)."""
     printer = coordinator.printer
-    device = dr.async_get(hass).async_get_device(
-        identifiers={printer_identifier(coordinator.config_entry, printer.printer_id)}
+    identifier = printer_identifier(coordinator.config_entry, printer.printer_id)
+    device = next(
+        (
+            device
+            for device in dr.async_entries_for_config_entry(
+                dr.async_get(hass), coordinator.config_entry.entry_id
+            )
+            if identifier in device.identifiers
+        ),
+        None,
     )
     return {
         "printer_id": printer.printer_id,

@@ -194,7 +194,8 @@ async def _async_setup_cloud_entry(
             await coordinator.async_setup_lan()
             runtime.add(coordinator)
         elif runtime.cloud is not None:
-            # Printers neither the cloud nor LAN can supply: retried (B37, G23).
+            # Printers neither the cloud nor LAN can supply: retried (B37,
+            # G23); the retried setup picks them up (E2-Q5 in QUESTIONS.md).
             raise ConfigEntryNotReady(
                 translation_domain=DOMAIN, translation_key="printer_not_in_cloud"
             )
@@ -246,9 +247,12 @@ def _async_remove_unselected_devices(
                 continue
             printer_id = identifier[len(prefix) :].split("-", 1)[0]
             if printer_id not in selected:
-                registry.async_update_device(
-                    device.id, remove_config_entry_id=entry.entry_id
-                )
+                if set(device.config_entries) == {entry.entry_id}:
+                    registry.async_remove_device(device.id)
+                else:  # pragma: no cover - shared devices exist only before 2026.9
+                    registry.async_update_device(
+                        device.id, remove_config_entry_id=entry.entry_id
+                    )
                 break
 
 

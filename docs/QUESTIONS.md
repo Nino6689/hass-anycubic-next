@@ -185,3 +185,77 @@ disabled entity is missing either way. No answer needed unless that is wrong.
 specified; a job ending tomorrow shows just the time. Should it add the day?
 
 **Applied in round 2.**
+
+## Phase E2 — the cloud half (implementation team, 2026-09-28)
+
+Asked while building the cloud half on `anycubic-cloud-client` 0.1.0. Each
+interim choice is marked in the code with its number (`E2-Qn in
+docs/QUESTIONS.md`).
+
+**E2-Q1. The Agora SDK key for encrypted camera channels.** The library's
+Agora client needs the RSA public key embedded in `agora-rtc-sdk-ng` 4.24.0
+to join an encrypted channel (its QUESTIONS Q6); the Kobra S1's camera
+answers with `AES_256_GCM2`. The integration has no source for that key.
+**Interim choice** (`camera.py`): the session is built without it, so an
+unencrypted channel streams and an encrypted one fails with a clear
+"Could not open the Anycubic cloud camera" error. Where should the key come
+from - loaded by name like the app credentials (CLOUD.md §1), or shipped in
+the library?
+
+**E2-Q2. Setup after repeated transient answers.** BEHAVIOUR §5.7 and
+PROTOCOL A §3.7 say setup retries a "request error" answer 3 times, 10 s
+apart, then fails with a *terminal* error. A terminal error leaves the entry
+failed until the user reloads it, which a cloud outage or a rate limit at
+Home Assistant start-up would cause. **Interim choice** (`cloud.py`,
+`CloudAccount._async_setup_retry`): the 3 retries 10 s apart are kept, then
+the entry is *not ready* and Home Assistant keeps retrying with back-off.
+Confirm, or should it be terminal after all?
+
+**E2-Q3. The expiry repair's links.** BEHAVIOUR §5.6 names placeholders
+`tool_macos`, `tool_windows`, `tool_browser` ("the three helper links") and a
+learn-more link "to the token tools", but not their addresses. **Interim
+choice** (`cloud.py`, `HELP_URL`): all four point to the token section of
+the 2.x README, `https://github.com/Nino6689/hass-anycubic#getting-a-token`.
+Which addresses should they be?
+
+**E2-Q4. The legacy `auth_mode_*` steps.** DECISIONS V9 says to drop them;
+this phase's task asks for COMPAT §1's step ids including the auth-mode pick.
+**Interim choice** (`config_flow.py`): `auth_mode_pick`, `auth_mode_web`,
+`auth_mode_slicer` and `auth_mode_android` exist as BEHAVIOUR §5.8 describes
+(fixed mode, quotes stripped, no other checks; a re-authentication through
+them neither clears the store nor reloads), and no menu leads to them, as in
+2.x. Should they be removed instead?
+
+**E2-Q5. Printers not loaded at setup.** BEHAVIOUR §1.7 says a selected
+printer not loaded at setup is picked up by a later refresh; G23 says a
+printer the cloud cannot supply at setup makes the entry *not ready*.
+**Interim choice** (`__init__.py`): not ready (the retried setup then picks
+the printer up), since an offline printer still has a cloud record. The one
+exception: a hybrid entry whose cloud is unavailable at setup runs its LAN
+printer and leaves the others to the next setup. Is a runtime pickup still
+wanted on top?
+
+**E2-Q6. Re-authentication with another account's token.** Nothing says what
+happens when the new token belongs to a different Anycubic account than the
+entry (its unique id). **Interim choice** (`config_flow.py`): abort
+`wrong_account` and change nothing, as Home Assistant integrations usually
+do. Confirm.
+
+**E2-Q7. The outage log.** BEHAVIOUR §5.5 wants a cloud outage logged once
+(warning) and its recovery once (info). The integration does so; Home
+Assistant's coordinator also logs its own standard line once per printer at
+the start of the outage (error) and at recovery (info). **Interim choice**:
+both are kept. Should the coordinator's line be suppressed?
+
+**E2-Q8. The token store's app keys.** The 2.x store also holds
+`app_id`, `app_secret`, `app_version` and `app_client_id`. The library never
+exports Anycubic's credentials, so 3.0 saves only `auth_token`,
+`auth_access_token`, `device_id` and `auth_mode`; 2.x reads back only the
+first three, so a downgrade keeps working. Confirm that dropping the four app
+keys from the store on the first save is acceptable.
+
+**E2-Q9. The cloud file list on a printer in LAN Mode.** The cloud list is
+the account's, over HTTP, so `request_file_list_cloud` stays available on a
+hybrid entry whose printer is on LAN (answer F3: available whenever the list
+can be fetched), while the local and USB buttons are unavailable there.
+Confirm.

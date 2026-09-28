@@ -568,7 +568,7 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         if cloud is None or cloud.client is None:
             return False
         if source == FILE_LIST_CLOUD:
-            return True
+            return True  # account-wide HTTP, also for a printer on LAN (E2-Q9)
         if source in (FILE_LIST_LOCAL, FILE_LIST_UDISK):
             return self.uses_cloud and cloud.mqtt.possible
         return False
