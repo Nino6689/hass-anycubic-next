@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anycubic-cloud-frontend"
+version = "1.0.0.dev0"
+description = "Built sidebar panel and dashboard card for the anycubic_cloud Home Assistant integration"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+classifiers = [
+  "Programming Language :: Python :: 3",
+]
+
+[tool.setuptools]
+packages = ["anycubic_cloud_frontend", "anycubic_cloud_frontend.dist"]
+
+[tool.setuptools.package-data]
+anycubic_cloud_frontend = ["py.typed"]
+"anycubic_cloud_frontend.dist" = ["*.js", "*.json"]
