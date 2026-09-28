@@ -1,0 +1,6 @@
+# Test and lint dependencies (CI and local development).
+anycubic-lan==0.1.0
+pytest-homeassistant-custom-component
+PyTurboJPEG
+ruff
+mypy
