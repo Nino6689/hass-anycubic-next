@@ -86,3 +86,10 @@ changes 2.x behaviour it is deliberate, and noted.
 | Timing | Build the cloud half **now**, on the same unofficial access 2.x uses, so testers get cloud and LAN. Don't wait for Anycubic's reply. If Anycubic grants an official API later, the client library moves to it. |
 | Anycubic's credentials | Loaded at run time from the installed `anycubic-cloud-api` package (`CLOUD.md` §1). They are never copied into this repository or into `anycubic-cloud-client`. |
 | Phases B and C | Merged into `main` (#2, #1). The cloud work builds on `main`. |
+
+## Reel fill (specification team, 2026-09-28)
+
+FRONTEND.md drew each ACE reel from `consumables_percent`, but BEHAVIOUR §2.7 says Anycubic reports that as 0 on every slot. Over the
+cloud every reel therefore looked empty (acceptance X2). The fill comes from the filament ledger's `ace_slot_N_filament_remaining_percent`
+(and `secondary_…` for ACE 2). That is the integration's own estimate of what is left on each reel, and it shows the spool tracking at a glance.
+When the value is unknown the reel is drawn full. FRONTEND.md is corrected.

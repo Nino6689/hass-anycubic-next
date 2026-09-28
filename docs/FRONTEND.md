@@ -540,7 +540,10 @@ reported yet — it asserts the hardware.
 - 1 or 2 ACE: the units drawn **stacked on top of the printer** (the drawing grows taller; the
   artwork's proportions change and the frame must keep the whole drawing visible). Each unit shows
   four reels in a row in their reported colours; each reel's visible diameter shrinks toward its
-  hub as `consumables_percent` falls (unknown = drawn full; never smaller than the hub). The slot
+  hub as the slot's **`ace_slot_N_filament_remaining_percent`** falls (for the second ACE,
+  `secondary_ace_slot_N_filament_remaining_percent`; unknown = drawn full; never smaller than the hub).
+  **Not** `consumables_percent`: Anycubic sends 0 for every slot, so every reel would look empty
+  (DECISIONS, 'Reel fill'). The slot
   currently feeding the printer is outlined, and only the feeding unit draws its feed tube in
   filament colour. A second unit with no colours is drawn uncoloured, never as a copy of the
   first.
