@@ -4,6 +4,7 @@ import {
   convertTemperature,
   dryingRemainingPercent,
   formatClock,
+  formatEta,
   formatDuration,
   formatGrams,
   formatMoney,
@@ -74,6 +75,18 @@ describe("clock and ETA", () => {
     expect(formatClock(new Date(2026, 8, 28, 0, 7), false, true)).toBe("12:07 am");
     expect(formatClock(new Date(2026, 8, 28, 12, 0), false, true)).toBe("12:00 pm");
     expect(formatClock(undefined, true, true)).toBe("—");
+  });
+
+  it("adds a short, locale-aware weekday when the end is not today", () => {
+    const now = new Date(2026, 8, 28, 13, 5, 9);
+    expect(formatEta(new Date(2026, 8, 28, 23, 59), true, true, "en", now)).toBe("23:59");
+    expect(formatEta(new Date(2026, 8, 29, 0, 10), true, true, "en", now)).toBe("Tue 00:10");
+    expect(formatEta(new Date(2026, 8, 29, 0, 10), false, true, "en", now)).toBe("Tue 12:10 am");
+    expect(formatEta(new Date(2026, 8, 29, 0, 10), true, true, "de", now)).toBe("Di 00:10");
+    expect(formatEta(new Date(2026, 9, 5, 9, 0), true, true, "fr", now)).toBe("lun. 09:00");
+    expect(formatEta(new Date(2026, 8, 29, 0, 10), true, true, "not a locale!", now)).toBe("Tue 00:10");
+    expect(formatEta(new Date(2026, 8, 28, 15, 0), true, true, "en")).toBe("15:00");
+    expect(formatEta(undefined, true, true, "en", now)).toBe("—");
   });
 
   it("prefers the job_eta timestamp", () => {

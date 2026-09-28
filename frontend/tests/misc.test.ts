@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import { feedingSlot, tipColour, type AceUnit } from "../src/lib/ace";
 import { bodyFromModel, chooseBody } from "../src/lib/body";
 import { contrastOn, heatLevel, normaliseColour, spoolColour, spoolRgb } from "../src/lib/colour";
-import { printStateOf, statusCategory } from "../src/lib/state";
+import { Printer } from "../src/lib/entities";
+import { printStateOf, stateSource, statusCategory } from "../src/lib/state";
 import { cardYaml } from "../src/lib/yaml";
-import { LANGUAGES, localize, stateWord, tryLocalize } from "../src/localize";
+import { entityStateWord, LANGUAGES, localize, stateWord, tryLocalize } from "../src/localize";
+import { device, hassWith } from "./fixtures";
 
 describe("print state", () => {
   it("follows job state, then offline, then printer status", () => {
@@ -116,6 +118,37 @@ describe("localisation", () => {
     expect(stateWord("en", "PRINTING")).toBe("Printing");
     expect(stateWord("en", "self_test")).toBe("Self Test");
     expect(stateWord("en", undefined)).toBe("Unknown");
+  });
+  it("prefers Home Assistant's translated entity state", () => {
+    const fake = hassWith(
+      [device("p1")],
+      [
+        { id: "sensor.k_job_state", device: "p1", key: "job_state", state: "printing" },
+        { id: "sensor.k_current_status", device: "p1", key: "current_status", state: "self_test" },
+      ],
+    );
+    const translated: Record<string, string> = { printing: "Druckt" };
+    const hass = {
+      ...fake,
+      language: "de",
+      formatEntityState: (e: { state: string }) => translated[e.state] ?? e.state,
+    };
+    const p = new Printer(hass, "p1");
+    expect(stateSource(p, "printing")?.entity_id).toBe("sensor.k_job_state");
+    expect(stateSource(p, "self_test")?.entity_id).toBe("sensor.k_current_status");
+    expect(stateSource(p, "offline")).toBeUndefined();
+    // translated by Home Assistant
+    expect(entityStateWord(hass, stateSource(p, "printing"), "printing")).toBe("Druckt");
+    // Home Assistant returned the raw state: our own strings
+    expect(entityStateWord(hass, stateSource(p, "self_test"), "self_test")).toBe("Self Test");
+    // derived states have no entity
+    expect(entityStateWord(hass, undefined, "offline")).toBe(stateWord("de", "offline"));
+    // an entity whose state is not the word shown is not asked
+    expect(entityStateWord(hass, p.entity("job_state"), "paused")).toBe(stateWord("de", "paused"));
+    // older Home Assistant without formatEntityState, or one that throws
+    expect(entityStateWord({ language: "en" }, p.entity("job_state"), "printing")).toBe("Printing");
+    const broken = { language: "en", formatEntityState: () => { throw new Error("x"); } };
+    expect(entityStateWord(broken, p.entity("job_state"), "printing")).toBe("Printing");
   });
   it("has a label for every stat and every editor option", async () => {
     const { ALL_STATS, MEDIA_VIEWS, PRINTER_ARTS, SECTIONS } = await import("../src/lib/config");

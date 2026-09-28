@@ -18,6 +18,10 @@ describe("routing", () => {
 });
 
 describe("panel card_config", () => {
+  it("uses the stored card_config object as the panel config itself", () => {
+    const stored = { printer_id: "0a1b", monitoredStats: ["Status", "ETA"], use_24hr: false };
+    expect(panelCardConfig({ config: { ...stored, _panel_custom: { name: "anycubic-cloud-panel" } } })).toEqual(stored);
+  });
   it("accepts the config directly or nested, dropping the custom-panel block", () => {
     expect(panelCardConfig({ config: { round: false, _panel_custom: { name: "x" } } })).toEqual({ round: false });
     expect(panelCardConfig({ config: { card_config: { alwaysShow: false } } })).toEqual({ alwaysShow: false });
@@ -73,23 +77,25 @@ describe("stats offered and panel defaults", () => {
 });
 
 describe("file refresh", () => {
-  const withMqtt = (supports: boolean | undefined, button = "unknown") =>
+  const withButtons = (local?: string, cloud?: string) =>
     new Printer(
       hassWith(
         [printer],
         [
-          { id: "button.k_req_local", device: "p1", key: "request_file_list_local", state: button },
-          { id: "button.k_req_cloud", device: "p1", key: "request_file_list_cloud", state: "unknown" },
-          { id: "binary_sensor.k_mqtt", device: "p1", key: "mqtt_connection_active", state: "off", attrs: supports === undefined ? {} : { supports_mqtt_login: supports } },
+          ...(local === undefined ? [] : [{ id: "button.k_req_local", device: "p1", key: "request_file_list_local", state: local }]),
+          ...(cloud === undefined ? [] : [{ id: "button.k_req_cloud", device: "p1", key: "request_file_list_cloud", state: cloud }]),
+          { id: "binary_sensor.k_mqtt", device: "p1", key: "mqtt_connection_active", state: "off", attrs: { supports_mqtt_login: false } },
         ],
       ),
       "p1",
     );
-  it("hides local refresh without MQTT support or button", () => {
-    expect(canRefresh(withMqtt(true), "local")).toBe(true);
-    expect(canRefresh(withMqtt(false), "local")).toBe(false);
-    expect(canRefresh(withMqtt(true, "unavailable"), "local")).toBe(false);
-    expect(canRefresh(withMqtt(false), "udisk")).toBe(false);
-    expect(canRefresh(withMqtt(false), "cloud")).toBe(true);
+  it("follows the source's request button", () => {
+    expect(canRefresh(withButtons("unknown"), "local")).toBe(true);
+    expect(canRefresh(withButtons("2026-09-28T10:00:00+00:00"), "local")).toBe(true);
+    expect(canRefresh(withButtons("unavailable"), "local")).toBe(false);
+    expect(canRefresh(withButtons("unknown"), "udisk")).toBe(false);
+    expect(canRefresh(withButtons(undefined, "unknown"), "cloud")).toBe(true);
+    expect(canRefresh(withButtons("unknown", "unavailable"), "cloud")).toBe(false);
+    expect(canRefresh(withButtons(), "cloud")).toBe(false);
   });
 });
