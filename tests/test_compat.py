@@ -176,8 +176,12 @@ async def test_ace_devices_link_without_deprecated_calls(
         assert ace.via_device_id == device.id
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
-    assert "Detected that custom integration 'anycubic_cloud'" not in caplog.text
-    assert "deprecated" not in caplog.text
+    # asyncio's slow-callback warning quotes this test's own name; skip it.
+    text = "\n".join(
+        record.getMessage() for record in caplog.records if record.name != "asyncio"
+    )
+    assert "Detected that custom integration 'anycubic_cloud'" not in text
+    assert "deprecated" not in text
 
 
 async def test_existing_registry_entries_are_reused(
