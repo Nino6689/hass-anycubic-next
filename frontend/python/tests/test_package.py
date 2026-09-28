@@ -2,8 +2,8 @@
 
 import hashlib
 import json
-import unittest
 from pathlib import Path
+import unittest
 
 import anycubic_cloud_frontend as fe
 
@@ -17,24 +17,24 @@ class PackageTest(unittest.TestCase):
         root = Path(fe.locate_dir())
         panel = root / fe.entrypoint_js()
         card = root / fe.card_js()
-        self.assertTrue(panel.is_file())
-        self.assertTrue(card.is_file())
-        self.assertEqual(fe.entrypoint_js(), f"entrypoint.{_hash8(panel)}.js")
-        self.assertEqual(fe.card_hash(), _hash8(card))
-        self.assertEqual(fe.card_js(), "anycubic-card.js")
+        assert panel.is_file()
+        assert card.is_file()
+        assert fe.entrypoint_js() == f"entrypoint.{_hash8(panel)}.js"
+        assert fe.card_hash() == _hash8(card)
+        assert fe.card_js() == "anycubic-card.js"
 
     def test_names(self) -> None:
-        self.assertEqual(fe.webcomponent_name(), "anycubic-cloud-panel")
-        self.assertEqual(fe.__version__, "1.0.0.dev0")
+        assert fe.webcomponent_name() == "anycubic-cloud-panel"
+        assert fe.__version__ == "1.0.0.dev0"
         info = json.loads((Path(fe.locate_dir()) / "build.json").read_text())
-        self.assertEqual(info["entrypoint"], fe.entrypoint_js())
-        self.assertEqual(info["webcomponent"], fe.WEBCOMPONENT_NAME)
+        assert info["entrypoint"] == fe.entrypoint_js()
+        assert info["webcomponent"] == fe.WEBCOMPONENT_NAME
 
     def test_panel_defines_its_component(self) -> None:
         text = (Path(fe.locate_dir()) / fe.entrypoint_js()).read_text()
-        self.assertIn(fe.WEBCOMPONENT_NAME, text)
+        assert fe.WEBCOMPONENT_NAME in text
         card = (Path(fe.locate_dir()) / fe.card_js()).read_text()
-        self.assertIn("anycubic-card", card)
+        assert "anycubic-card" in card
 
 
 if __name__ == "__main__":
