@@ -39,6 +39,14 @@ printer at the same moment.
 | U3 | At setup Home Assistant 2026.9 logs: *Detected that custom integration 'anycubic_cloud' calls `device_registry.async_get_or_create` with a deprecated `via_device` parameter; use `via_device_id` instead* (`entity.py`, line 151). | No deprecation warnings. |
 | U4 | At shutdown Home Assistant logs: *Task … name='anycubic_cloud push <title> anycubic_cloud <entry id>' coro=AnycubicCoordinator._async_push_listeners() … was still running after final writes shutdown stage; Integrations should cancel non-critical tasks when receiving the stop event*. | The push task ends cleanly on unload and on Home Assistant stop. |
 
+U1: **Fixed in 894f7ed.**
+
+U2: **Fixed in 4335f21.**
+
+U3: **Fixed in 70049e6.**
+
+U4: **Fixed in ebe11ea.**
+
 ### Re-run on `clean/lan-integration` @ `60d851a` (after round 2)
 
 The method is unchanged. Everything under **Passed** above still holds. 104 provided entities now
@@ -71,6 +79,8 @@ Every attribute of every entity was compared with live 2.x. These differences ar
 | # | Observed | Expected |
 |---|---|---|
 | U5 | On LAN, the printer firmware update entity sets `latest_version` to the installed version, so it claims "up to date". | BEHAVIOUR G10: `installed_version` comes from LAN `info.version` (done), and `latest_version` stays **unknown** until the cloud supplies a target. Never copy the installed version into it. |
+
+U5: **Fixed in 20aa31f.**
 
 ## Frontend with the integration — 2026-09-28, `clean/frontend` @ `6a8c382` + `clean/lan-integration` @ `60d851a`
 

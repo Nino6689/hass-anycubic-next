@@ -1,0 +1,78 @@
+[project]
+name = "hass-anycubic-next"
+version = "3.0.0.dev0"
+description = "Anycubic Cloud & LAN - Home Assistant custom integration (anycubic_cloud 3.0)"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = ["anycubic-lan==0.1.0"]
+
+[project.optional-dependencies]
+test = [
+    "pytest-homeassistant-custom-component",
+    "mypy",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+src = ["custom_components", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "SIM",   # flake8-simplify
+    "RUF",   # ruff-specific
+    "C4",    # flake8-comprehensions
+    "PT",    # flake8-pytest-style
+    "ASYNC", # flake8-async
+    "S",     # flake8-bandit
+    "LOG",   # flake8-logging
+    "G",     # flake8-logging-format
+    "PIE",   # flake8-pie
+    "RET",   # flake8-return
+    "PL",    # pylint
+]
+ignore = [
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments
+    "PLR0915", # too many statements
+    "PLR2004", # magic values: the spec's numbers read best in place
+    "S101",    # assert narrows types, as in Home Assistant core
+    "RUF012",  # entity class attributes, as in Home Assistant core
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S105", "S106", "PLC0415", "PLR2004"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components"]
+force-sort-within-sections = true
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_unreachable = true
+files = ["custom_components/anycubic_cloud"]
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "--cov=custom_components.anycubic_cloud --cov-report=term-missing"
+
+[tool.coverage.run]
+branch = true
+source = ["custom_components/anycubic_cloud"]
+
+[tool.coverage.report]
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
