@@ -178,13 +178,12 @@ class AnycubicConfigFlow(ConfigFlow, domain=DOMAIN):
             return self.async_abort(reason="already_configured")
         # A printer of a cloud entry is keyed by account, not MAC: look for
         # the MAC among this integration's devices (B27).
-        device = dr.async_get(self.hass).async_get_device(
-            connections={(dr.CONNECTION_NETWORK_MAC, mac)}
-        )
-        if device is not None and any(
-            (entry := self.hass.config_entries.async_get_entry(entry_id)) is not None
-            and entry.domain == DOMAIN
-            for entry_id in device.config_entries
+        registry = dr.async_get(self.hass)
+        connection = (dr.CONNECTION_NETWORK_MAC, mac)
+        if any(
+            connection in device.connections
+            for entry in self.hass.config_entries.async_entries(DOMAIN)
+            for device in dr.async_entries_for_config_entry(registry, entry.entry_id)
         ):
             return self.async_abort(reason="already_configured")
         self._discovered_host = host

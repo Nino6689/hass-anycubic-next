@@ -6,7 +6,6 @@ from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import device_registry as dr
 from homeassistant.setup import async_setup_component
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -16,7 +15,7 @@ from custom_components.anycubic_cloud.const import DOMAIN
 from custom_components.anycubic_cloud.services import SERVICES
 
 from . import payloads
-from .conftest import MockPrinter, cloud_entry, lan_entry, setup_entry
+from .conftest import MockPrinter, cloud_entry, find_device, lan_entry, setup_entry
 
 CLOUD_ONLY = (
     (
@@ -41,9 +40,7 @@ async def loaded(hass: HomeAssistant, printer: MockPrinter) -> MockConfigEntry:
 
 
 def _device_id(hass: HomeAssistant, suffix: str = "") -> str:
-    device = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, f"None-{payloads.PRINTER_ID}{suffix}")}
-    )
+    device = find_device(hass, f"None-{payloads.PRINTER_ID}{suffix}")
     assert device is not None
     return device.id
 

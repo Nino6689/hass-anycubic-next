@@ -24,6 +24,7 @@ from .conftest import (
     CLOUD_USER_ID,
     MockPrinter,
     cloud_entry,
+    find_device,
     lan_entry,
     setup_entry,
 )
@@ -120,8 +121,7 @@ async def test_lan_only_entry_identity(
     entry = await setup_entry(hass, lan_entry())
     assert entry.state is ConfigEntryState.LOADED
 
-    devices = dr.async_get(hass)
-    device = devices.async_get_device(identifiers={(DOMAIN, f"None-{PID}")})
+    device = find_device(hass, f"None-{PID}")
     assert device is not None
     assert device.manufacturer == "Anycubic"
     assert device.model == "Anycubic Kobra S1"
@@ -131,7 +131,7 @@ async def test_lan_only_entry_identity(
     assert (dr.CONNECTION_NETWORK_MAC, payloads.MAC) in device.connections
     assert device.via_device_id is None
 
-    ace = devices.async_get_device(identifiers={(DOMAIN, f"None-{PID}-ace0")})
+    ace = find_device(hass, f"None-{PID}-ace0")
     assert ace is not None
     assert ace.via_device_id == device.id
     assert ace.name == "Anycubic Kobra S1 ACE Pro"
@@ -268,13 +268,9 @@ async def test_hybrid_2x_cloud_entry_runs_on_lan(
     """A cloud entry with LAN Mode on keeps its account-based identifiers."""
     entry = await setup_entry(hass, cloud_entry(lan=True))
     assert entry.state is ConfigEntryState.LOADED
-    devices = dr.async_get(hass)
     identifier = f"{CLOUD_USER_ID}-{CLOUD_PRINTER_ID}"
-    assert devices.async_get_device(identifiers={(DOMAIN, identifier)}) is not None
-    assert (
-        devices.async_get_device(identifiers={(DOMAIN, f"{identifier}-ace0")})
-        is not None
-    )
+    assert find_device(hass, identifier) is not None
+    assert find_device(hass, f"{identifier}-ace0") is not None
     registry = er.async_get(hass)
     entity_id = registry.async_get_entity_id(
         "sensor", DOMAIN, f"{payloads.MAC_UID}-curr_nozzle_temp"
@@ -325,8 +321,7 @@ async def test_entry_without_printer_ids_derives_the_id(
 ) -> None:
     entry = lan_entry(data={"lan_host": payloads.HOST})
     await setup_entry(hass, entry)
-    devices = dr.async_get(hass)
-    assert devices.async_get_device(identifiers={(DOMAIN, f"None-{PID}")})
+    assert find_device(hass, f"None-{PID}")
 
 
 async def test_entry_with_several_printers_uses_the_first(
@@ -340,8 +335,7 @@ async def test_entry_with_several_printers_uses_the_first(
         options=dict(entry.options),
     )
     await setup_entry(hass, entry)
-    devices = dr.async_get(hass)
-    assert devices.async_get_device(identifiers={(DOMAIN, f"{CLOUD_USER_ID}-7")})
+    assert find_device(hass, f"{CLOUD_USER_ID}-7")
 
 
 async def test_printer_without_mac(hass: HomeAssistant, printer: MockPrinter) -> None:
@@ -352,7 +346,7 @@ async def test_printer_without_mac(hass: HomeAssistant, printer: MockPrinter) ->
     assert registry.async_get_entity_id(
         "sensor", DOMAIN, f"{payloads.DEVICE_ID.upper()}-curr_nozzle_temp"
     )
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, f"None-{PID}")})
+    device = find_device(hass, f"None-{PID}")
     assert device is not None
     assert device.connections == set()
     assert entry.state is ConfigEntryState.LOADED

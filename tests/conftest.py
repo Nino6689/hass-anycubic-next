@@ -17,6 +17,7 @@ from anycubic_lan import (
     parse_message,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -267,6 +268,14 @@ def cloud_entry(*, lan: bool, **overrides: Any) -> MockConfigEntry:
     }
     params.update(overrides)
     return MockConfigEntry(**params)
+
+
+def find_device(hass: HomeAssistant, identifier: str) -> dr.DeviceEntry | None:
+    """The device with ``(anycubic_cloud, identifier)``, on any HA version."""
+    for device in dr.async_get(hass).devices.values():
+        if (DOMAIN, identifier) in device.identifiers:
+            return device
+    return None
 
 
 async def setup_entry(hass: HomeAssistant, entry: MockConfigEntry) -> MockConfigEntry:

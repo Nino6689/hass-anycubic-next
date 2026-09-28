@@ -13,14 +13,14 @@ from freezegun.api import FrozenDateTimeFactory
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import entity_registry as er
 import pytest
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
 from custom_components.anycubic_cloud.const import DOMAIN
 
 from . import payloads
-from .conftest import MockPrinter, lan_entry, setup_entry
+from .conftest import MockPrinter, find_device, lan_entry, setup_entry
 
 NOZZLE = "sensor.anycubic_kobra_s1_nozzle_temperature"
 ONLINE = "binary_sensor.anycubic_kobra_s1_printer_online"
@@ -212,9 +212,7 @@ async def test_ace_entities_wait_for_the_ace(
         "button", DOMAIN, f"{payloads.MAC_UID}-secondary_drying_stop"
     )
     assert stop == "button.anycubic_kobra_s1_ace_2_secondary_drying_stop"
-    second = dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, f"None-{payloads.PRINTER_ID}-ace1")}
-    )
+    second = find_device(hass, f"None-{payloads.PRINTER_ID}-ace1")
     assert second is not None
     assert second.name == "Anycubic Kobra S1 ACE 2"
     assert second.model == "ACE"
