@@ -259,16 +259,21 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         if self.link.connected:
             self.last_update_success = True
             self.last_exception = None
-        if not self._push_pending:
+        if not self._push_pending and self.hass.is_running:
             self._push_pending = True
-            self.config_entry.async_create_task(
+            # A background task of the entry: cancelled on unload and when
+            # Home Assistant stops, never waited for. None is started once
+            # Home Assistant is stopping (U4).
+            self.config_entry.async_create_background_task(
                 self.hass, self._async_push_listeners(), "anycubic_cloud push"
             )
 
     async def _async_push_listeners(self) -> None:
         """Tell the entities once per burst of reports."""
-        await asyncio.sleep(PUSH_COOLDOWN)
-        self._push_pending = False
+        try:
+            await asyncio.sleep(PUSH_COOLDOWN)
+        finally:
+            self._push_pending = False
         self.async_update_listeners()
 
     def _handle_connection(self, connected: bool) -> None:

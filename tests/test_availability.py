@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
+from unittest.mock import patch
 
 from anycubic_lan import (
     LanModeDisabledError,
@@ -276,3 +278,55 @@ async def test_resin_or_unknown_printer_has_no_filament_entities(
         assert "current_status" in keys
         await hass.config_entries.async_remove(entry.entry_id)
         await hass.async_block_till_done(wait_background_tasks=True)
+
+
+async def test_push_task_ends_on_unload(
+    hass: HomeAssistant,
+    printer: MockPrinter,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A report still being coalesced does not hold up unloading (U4)."""
+    entry = await setup_entry(hass, lan_entry())
+    monkeypatch.setattr(
+        "custom_components.anycubic_cloud.coordinator.PUSH_COOLDOWN", 3600
+    )
+    coordinator = entry.runtime_data
+    # A tracked push task would hold up each wait below for the hour.
+    async with asyncio.timeout(5):
+        printer.client.feed(payloads.info())
+        await hass.async_block_till_done()
+        assert coordinator._push_pending
+        with patch("asyncio.wait", wraps=asyncio.wait) as wait:
+            assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()
+    assert entry.state is ConfigEntryState.NOT_LOADED
+    assert not coordinator._push_pending
+    # Unloading waited on nothing it had to time out.
+    for call in wait.call_args_list:
+        assert all(task.done() for task in call.args[0])
+    assert "did not complete in time" not in caplog.text
+
+
+async def test_push_task_ends_when_home_assistant_stops(
+    hass: HomeAssistant,
+    printer: MockPrinter,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Stopping cancels a pending push and schedules no new one (U4)."""
+    entry = await setup_entry(hass, lan_entry())
+    monkeypatch.setattr(
+        "custom_components.anycubic_cloud.coordinator.PUSH_COOLDOWN", 3600
+    )
+    coordinator = entry.runtime_data
+    async with asyncio.timeout(5):
+        printer.client.feed(payloads.info())
+        await hass.async_block_till_done()
+        assert coordinator._push_pending
+        await hass.async_stop(force=True)
+    assert not coordinator._push_pending
+    printer.client.feed(payloads.info())  # reports arriving after the stop
+    assert not coordinator._push_pending
+    assert "still running after final writes" not in caplog.text
+    assert "anycubic_cloud push" not in caplog.text
