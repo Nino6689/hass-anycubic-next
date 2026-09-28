@@ -259,3 +259,9 @@ the account's, over HTTP, so `request_file_list_cloud` stays available on a
 hybrid entry whose printer is on LAN (answer F3: available whenever the list
 can be fetched), while the local and USB buttons are unavailable there.
 Confirm.
+
+**E2-Q10. A multi-colour job that uses the second ACE.** BEHAVIOUR §3
+tracks only the first ACE's slots, so §3.5's split drops colours with a
+`paint_index` of 4 or more: their grams reach no slot, and no totals, cost or
+nozzle wear. Should those grams still be booked in the totals, cost (unpriced)
+and nozzle wear, without a slot? Until answered they are dropped, as in 2.x.
