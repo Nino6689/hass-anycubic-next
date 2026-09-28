@@ -241,7 +241,7 @@ export class AnycubicCard extends LitElement {
         const rem = p.num("dry_status_remaining_time");
         const pct = dryingRemainingPercent(rem, p.num("dry_status_total_duration"));
         if (rem === undefined) return NO_VALUE;
-        return html`<span class="dry">
+        return html`<span class="dry-time">
           <span>${Math.round(rem)} ${this.t("common.values.minutes")}</span>
           ${pct === undefined ? nothing : html`<span class="bar small"><span style="width:${pct}%"></span></span>`}
         </span>`;
@@ -635,6 +635,7 @@ export class AnycubicCard extends LitElement {
         display: block;
         height: 100%;
         overflow: hidden;
+        color: var(--primary-text-color);
         --ac-status: var(--ac-problem);
       }
       ha-card.cat-activity {
@@ -762,7 +763,7 @@ export class AnycubicCard extends LitElement {
       .bar.small span {
         background: var(--ac-accent);
       }
-      .dry {
+      .dry-time {
         display: inline-flex;
         flex-direction: column;
         align-items: flex-end;
@@ -980,11 +981,22 @@ export class AnycubicCard extends LitElement {
         left: 18px;
       }
       .spools {
-        flex: 1;
+        flex: 1 1 210px;
         display: flex;
         justify-content: space-around;
-        gap: 6px;
-        min-width: 0;
+        gap: 4px;
+      }
+      .spool {
+        flex: none;
+      }
+      .ace .dry {
+        margin-left: auto;
+      }
+      @container (max-width: 420px) {
+        .spools {
+          order: 3;
+          flex-basis: 100%;
+        }
       }
       .spool {
         display: flex;

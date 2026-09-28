@@ -70,7 +70,7 @@ export function entitySet(hass: HassLike | undefined, deviceId: string | undefin
       .map((d) => d.id),
   ];
   const members = new Set(deviceIds);
-  const entityIds = Object.values(hass.entities)
+  const entityIds = Object.values(hass.entities ?? {})
     .filter((e) => e.device_id && members.has(e.device_id))
     .map((e) => e.entity_id);
   return { device, deviceIds, entityIds, prefix: commonPrefix(entityIds) };
@@ -95,10 +95,11 @@ export function resolveEntityId(
     const preferred = set.prefix ? matches.find((id) => objectId(id).startsWith(set.prefix)) : undefined;
     return preferred ?? matches[0];
   };
-  const byKey = live.filter((id) => hass.entities[id]?.translation_key === key);
+  const registry = hass.entities ?? {};
+  const byKey = live.filter((id) => registry[id]?.translation_key === key);
   if (byKey.length) return pick(byKey);
   const bySuffix = live.filter((id) => {
-    const tk = hass.entities[id]?.translation_key;
+    const tk = registry[id]?.translation_key;
     const oid = objectId(id);
     return (tk === undefined || tk === null) && (oid === key || oid.endsWith(`_${key}`));
   });
@@ -130,7 +131,7 @@ export function chooseCamera(
   const candidates: CameraChoice[] = set.entityIds
     .filter((id) => domainOf(id) === "camera")
     .map((id) => {
-      const tk = hass.entities[id]?.translation_key;
+      const tk = hass.entities?.[id]?.translation_key;
       const isCloud = tk ? tk === "cloud_camera" : objectId(id).endsWith("cloud_camera");
       const state = hass.states?.[id]?.state;
       return { entityId: id, isCloud, available: state !== undefined && state !== "unavailable" };

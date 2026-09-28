@@ -154,7 +154,7 @@ function sideReel(m: ArtModel, y0: number): SVGTemplateResult {
     <path d="M40 ${cy - 30} C 40 ${y0 - 22}, 120 ${y0 - 22}, 132 ${y0 + 8}" class="a-tube feeding"
       style=${m.tipColour ? `stroke:${m.tipColour}` : ""}></path>
     <path d="M80 ${cy} H40" class="a-rail"></path>
-    ${reel(40, cy, { loaded: true, feeding: false, colour: m.tipColour }, 30, 10)}
+    ${reel(40, cy, { loaded: true, feeding: false, colour: m.tipColour ?? "var(--ac-accent)" }, 30, 10)}
   </g>`;
 }
 

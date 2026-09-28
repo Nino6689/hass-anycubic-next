@@ -267,7 +267,7 @@
             "ace_fw_version": "Colour box firmware",
             "ace_fw_update_available": "Colour box update",
             "drying_active": "Dryer",
-            "drying_progress": "Drying done"
+            "drying_progress": "Drying left"
           }
         }
       },

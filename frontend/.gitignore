@@ -5,3 +5,4 @@ python/anycubic_cloud_frontend/_build.py
 python/build/
 python/*.egg-info/
 __pycache__/
+wheel/
