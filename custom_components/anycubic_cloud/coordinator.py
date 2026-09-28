@@ -24,7 +24,6 @@ from anycubic_lan import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.debounce import Debouncer
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -94,13 +93,7 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         self.forecast: Forecast | None = None
         # The job is only trusted once the current connection sent `info`.
         self._info_seen = asyncio.Event()
-        self._push = Debouncer(
-            hass,
-            _LOGGER,
-            cooldown=PUSH_COOLDOWN,
-            immediate=True,
-            function=self._async_push_listeners,
-        )
+        self._push_pending = False
 
     # -- setup ---------------------------------------------------------------
 
@@ -193,9 +186,11 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
     async def async_shutdown(self) -> None:
         """Close the connection and write the ledger (BEHAVIOUR §5.7)."""
         await super().async_shutdown()
-        self._push.async_shutdown()
         await self.link.async_disconnect()
         await self.ledger.async_flush()
+        if self._printer is not None:
+            # The capability memory was read at setup; write it back now.
+            await self._capabilities.async_save(self._capability_data)
 
     # -- refresh ---------------------------------------------------------------
 
@@ -252,9 +247,16 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         if self.link.connected:
             self.last_update_success = True
             self.last_exception = None
-        self.hass.async_create_task(self._push.async_call(), eager_start=True)
+        if not self._push_pending:
+            self._push_pending = True
+            self.config_entry.async_create_task(
+                self.hass, self._async_push_listeners(), "anycubic_cloud push"
+            )
 
     async def _async_push_listeners(self) -> None:
+        """Tell the entities once per burst of reports."""
+        await asyncio.sleep(PUSH_COOLDOWN)
+        self._push_pending = False
         self.async_update_listeners()
 
     def _handle_connection(self, connected: bool) -> None:
