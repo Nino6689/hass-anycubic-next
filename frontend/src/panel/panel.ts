@@ -42,8 +42,10 @@ export function parseRoute(path: string | undefined): { deviceId?: string; page?
 }
 
 /**
- * The panel's card settings. The integration passes the entry's `card_config`
- * object either as the panel config itself or under a `card_config` key.
+ * The panel's card settings. The integration passes the entry's stored
+ * `card_config` object as the panel config itself (DECISIONS round 2, F1);
+ * Home Assistant's `_panel_custom` block is dropped. The object nested under a
+ * `card_config` key is still accepted.
  */
 export function panelCardConfig(panel: PanelInfo | undefined): Record<string, unknown> {
   const config = panel?.config;
