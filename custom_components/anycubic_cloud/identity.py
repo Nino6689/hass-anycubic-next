@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from homeassistant.helpers.device_registry import format_mac
 
@@ -36,6 +36,10 @@ def entry_unique_id_for_lan(mac: str | None, host: str) -> str:
     if mac:
         return format_mac(mac)
     return f"lan-{host.strip()}"
+
+
+# Unique-id prefix of a printer that reports no MAC (DECISIONS round 2, Q4).
+NO_MAC: Final = "None"
 
 
 def unique_id_mac(mac: str) -> str:

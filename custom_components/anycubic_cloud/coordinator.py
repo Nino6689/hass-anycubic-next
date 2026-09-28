@@ -40,7 +40,7 @@ from .const import (
     STORE_VERSION,
     UPDATE_INTERVAL,
 )
-from .identity import lan_printer_id, unique_id_mac
+from .identity import NO_MAC, lan_printer_id, unique_id_mac
 from .lan import LanLink
 from .ledger import FilamentLedger, Forecast
 from .model import (
@@ -162,9 +162,9 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         else:
             printer_id = lan_printer_id(info.device_id)
         model_name = info.discovery.model_name or state.model or info.model_name
-        # Without a MAC in the discovery document the unique ids fall back to
-        # the broker's device id (Q4).
-        mac = unique_id_mac(info.mac) if info.mac else info.device_id.upper()
+        # Without a MAC, 2.x formatted the missing value as the text "None",
+        # so unique ids are ``None-<key>`` (compatibility; round 2, Q4).
+        mac = unique_id_mac(info.mac) if info.mac else NO_MAC
         return PrinterIdentity(
             printer_id=printer_id,
             mac=mac,

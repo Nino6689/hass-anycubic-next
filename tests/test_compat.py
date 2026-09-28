@@ -339,13 +339,16 @@ async def test_entry_with_several_printers_uses_the_first(
 
 
 async def test_printer_without_mac(hass: HomeAssistant, printer: MockPrinter) -> None:
-    """Without a MAC the broker's device id stands in for unique ids (Q4)."""
+    """Without a MAC unique ids are the literal ``None-<key>`` (round 2, Q4)."""
     printer.info = payloads.connection_info(usn=None)
     entry = await setup_entry(hass, lan_entry(unique_id=f"lan-{payloads.HOST}"))
     registry = er.async_get(hass)
-    assert registry.async_get_entity_id(
-        "sensor", DOMAIN, f"{payloads.DEVICE_ID.upper()}-curr_nozzle_temp"
-    )
+    assert registry.async_get_entity_id("sensor", DOMAIN, "None-curr_nozzle_temp")
+    assert registry.async_get_entity_id("light", DOMAIN, "None-printer_light")
+    ours = er.async_entries_for_config_entry(registry, entry.entry_id)
+    assert ours
+    assert all(e.unique_id.startswith("None-") for e in ours)
+    assert not any(payloads.DEVICE_ID.upper() in e.unique_id for e in ours)
     device = find_device(hass, f"None-{PID}")
     assert device is not None
     assert device.connections == set()
