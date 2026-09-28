@@ -156,3 +156,16 @@ config flow in an empty Home Assistant, the hardware commands, and the panel and
 | X1 | `job_filament_used` reads `65.0`. | `65`, the whole number of millimetres, as 2.x reports it (COMPAT §3 'State formats'). |
 | X2 | Over the cloud every ACE reel in the card and panel art is drawn **empty**. `consumables_percent` is 0 for every slot, as BEHAVIOUR says it always is. | Fill each reel from the slot's `ace_slot_N_filament_remaining_percent` (`secondary_…` for ACE 2). Unknown = full. Never use `consumables_percent` (FRONTEND.md corrected; DECISIONS 'Reel fill'). |
 | X3 | The cloud camera doesn't stream. HA shows *"Could not open the Anycubic cloud camera: The camera channel is encrypted: pass the Agora SDK public key"*. | This is fixed in the library (its ACCEPTANCE L3: the key becomes its default). Once the library is updated, the integration needs no key handling of its own. Re-test the stream after that. |
+
+### Final re-test — 2026-09-28, `clean/cloud` @ `3ed37dd` with `anycubic-cloud-client` `main` @ `ea1b7e1`
+
+- **X1 confirmed.** `job_filament_used` matches 2.x (`65`). 128 of 129 compared entities now match live 2.x exactly. The only
+  difference left is `job_preview`, where 3.0 shows the image (accepted).
+- **X2 confirmed.** The ACE reels in the art show the slot colours and are sized by the ledger's remaining percentages (84 %, 72 %,
+  91 %, 100 %). The printed part on the bed is drawn in the loaded colour.
+- **X3 confirmed.** The cloud camera streams live through Home Assistant's WebRTC, on desktop and phone.
+- Hardware commands over the cloud (light, part fan) are reported back. The log has no warnings from the integration. The live 2.x
+  install stayed healthy throughout.
+- Similarity is unchanged (the data tables and import blocks). The secret scan found no hits in 63 files.
+
+**Result: Phase E2 (cloud half) accepted. `anycubic_cloud` 3.0 works over the cloud and over LAN.**
