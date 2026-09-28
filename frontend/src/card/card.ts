@@ -31,8 +31,8 @@ import {
   clampPercent,
   computeEta,
   dryingRemainingPercent,
-  formatClock,
   formatDuration,
+  formatEta,
   formatGrams,
   formatMoney,
   formatPercent,
@@ -193,6 +193,7 @@ export class AnycubicCard extends LitElement {
   private statValue(stat: string): TemplateResult | string {
     const p = this.printer;
     const c = this.config;
+    const lang = this.hass?.language;
     switch (stat) {
       case "Status": {
         const s = statusStat(p);
@@ -212,7 +213,7 @@ export class AnycubicCard extends LitElement {
         return this.plain("job_current_layer");
       case "ETA": {
         const eta = computeEta(p.value("job_eta"), this.ticking("job_time_remaining", -1));
-        return formatClock(eta, c.use_24hr, c.round);
+        return formatEta(eta, c.use_24hr, c.round, lang);
       }
       case "Elapsed":
         return formatDuration(this.ticking("job_time_elapsed", 1), c.round);

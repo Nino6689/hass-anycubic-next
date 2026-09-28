@@ -72,6 +72,31 @@ export function formatClock(date: Date | undefined, use24: boolean, round: boole
 }
 
 /**
+ * The ETA: the clock time, preceded by a short weekday in the display language
+ * when the end is not today (DECISIONS round 2, F6).
+ */
+export function formatEta(
+  date: Date | undefined,
+  use24: boolean,
+  round: boolean,
+  language: string | undefined,
+  now: Date = new Date(),
+): string {
+  const clock = formatClock(date, use24, round);
+  if (!date || clock === NO_VALUE) return clock;
+  const sameDay =
+    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+  if (sameDay) return clock;
+  let weekday: string;
+  try {
+    weekday = new Intl.DateTimeFormat(language || "en", { weekday: "short" }).format(date);
+  } catch {
+    weekday = new Intl.DateTimeFormat("en", { weekday: "short" }).format(date);
+  }
+  return `${weekday} ${clock}`;
+}
+
+/**
  * The job's end: the `job_eta` timestamp when it has a value, otherwise
  * now + remaining seconds (DECISIONS, frontend 10).
  */
