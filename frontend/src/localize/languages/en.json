@@ -14,7 +14,7 @@
       "refresh": "Refresh"
     },
     "messages": {
-      "mqtt_unsupported": "This printer can't send its file lists from here, so refreshing is switched off.",
+      "refresh_unavailable": "This list can't be fetched over the current connection, so refreshing is switched off.",
       "no_printer": "No printer selected",
       "page_not_found": "There's nothing at this address.",
       "unknown": "Unknown"

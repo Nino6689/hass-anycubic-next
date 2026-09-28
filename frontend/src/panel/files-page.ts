@@ -20,14 +20,13 @@ interface FileInfo {
 }
 
 /**
- * Whether the refresh control is offered. The cloud list always can be; the
- * printer's own lists need the request button and a printer that can answer
- * (DECISIONS, frontend 12: hide the control otherwise).
+ * Whether the source's list can be refreshed. The integration makes the
+ * `request_file_list_<source>` button unavailable when the list cannot be
+ * fetched over the current connection (DECISIONS round 2, F3); a missing
+ * button counts the same.
  */
 export function canRefresh(p: Printer, source: FileSource): boolean {
-  if (!p.usable(`request_file_list_${source}`, "button")) return false;
-  if (source === "cloud") return true;
-  return p.attr<boolean>("mqtt_connection_active", "supports_mqtt_login", "binary_sensor") !== false;
+  return p.usable(`request_file_list_${source}`, "button");
 }
 
 export class AnycubicFilesPage extends LitElement {
@@ -52,7 +51,7 @@ export class AnycubicFilesPage extends LitElement {
   }
 
   private async refresh(p: Printer) {
-    if (this.refreshing || !this.hass) return;
+    if (this.refreshing || !this.hass || !canRefresh(p, this.source)) return;
     this.refreshing = true;
     try {
       await pressButton(this.hass, p, `request_file_list_${this.source}`);
@@ -88,13 +87,10 @@ export class AnycubicFilesPage extends LitElement {
     const refresh = canRefresh(p, this.source);
     return html`<ha-card>
       <div class="bar">
-        ${refresh
-          ? html`<button class="btn" ?disabled=${this.refreshing} @click=${() => this.refresh(p)}>
-              ${icon(mdiRefresh, 18)} ${this.t("common.actions.refresh")}
-            </button>`
-          : this.source !== "cloud"
-            ? html`<p class="note">${this.t("common.messages.mqtt_unsupported")}</p>`
-            : nothing}
+        ${refresh ? nothing : html`<p class="note">${this.t("common.messages.refresh_unavailable")}</p>`}
+        <button class="btn" ?disabled=${!refresh || this.refreshing} @click=${() => this.refresh(p)}>
+          ${icon(mdiRefresh, 18)} ${this.t("common.actions.refresh")}
+        </button>
       </div>
       ${files.length
         ? html`<ul>
@@ -135,9 +131,12 @@ export class AnycubicFilesPage extends LitElement {
       .bar {
         display: flex;
         justify-content: flex-end;
+        align-items: center;
+        gap: 8px;
         margin-bottom: 8px;
       }
       .bar .note {
+        flex: 1;
         margin: 0;
       }
       ul {
