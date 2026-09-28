@@ -272,9 +272,11 @@ def cloud_entry(*, lan: bool, **overrides: Any) -> MockConfigEntry:
 
 def find_device(hass: HomeAssistant, identifier: str) -> dr.DeviceEntry | None:
     """The device with ``(anycubic_cloud, identifier)``, on any HA version."""
-    for device in dr.async_get(hass).devices.values():
-        if (DOMAIN, identifier) in device.identifiers:
-            return device
+    registry = dr.async_get(hass)
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
+            if (DOMAIN, identifier) in device.identifiers:
+                return device
     return None
 
 
