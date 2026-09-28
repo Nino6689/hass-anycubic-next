@@ -71,3 +71,28 @@ Every attribute of every entity was compared with live 2.x. These differences ar
 | # | Observed | Expected |
 |---|---|---|
 | U5 | On LAN, the printer firmware update entity sets `latest_version` to the installed version, so it claims "up to date". | BEHAVIOUR G10: `installed_version` comes from LAN `info.version` (done), and `latest_version` stays **unknown** until the cloud supplies a target. Never copy the installed version into it. |
+
+## Frontend with the integration — 2026-09-28, `clean/frontend` @ `6a8c382` + `clean/lan-integration` @ `60d851a`
+
+**Method.** The Phase C bundles were built with `npm ci && npm run build` and
+served through the integration's `www/` fallback. They were loaded in the scratch
+Home Assistant over the 2.x snapshot and the live printer, and rendered in WebKit at 1440 px
+and 390 px wide. The panel was opened at `/anycubic_cloud`, and the card on a
+dashboard twice: once with the defaults, once with `alwaysShow`, `vertical`,
+`round: false`, `use_24hr` and a custom `monitoredStats` list.
+
+**Passed.**
+
+- The panel registers as "Anycubic Cloud & LAN", and every tab loads. The Overview shows the
+  printer illustration with the ACE's four spools in their real colours and slot 1 marked loaded. It also shows live state and
+  temperatures, the machine and colour-box boxes, move controls and the
+  "card ideas" examples.
+- The card with default options is folded to its header while the printer is idle, which is the `alwaysShow: false` behaviour.
+  With `alwaysShow` it shows the illustration and every requested stat, with live values.
+- There were no console errors or page errors at either width.
+- The phone layout keeps its width; the page tabs scroll.
+
+**Notes.**
+
+- The Overview's "Firmware update: Current" comes from U5 and will read unknown once U5 is fixed.
+- The speed stat reads `2`: the mode code. On LAN, 2.x shows the same, because the names come from the cloud (BEHAVIOUR). **Accepted.**
