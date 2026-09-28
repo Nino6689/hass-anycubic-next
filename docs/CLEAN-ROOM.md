@@ -9,7 +9,7 @@ MIT-licensed, containing no code or expression from those projects.
 | Role | Who | May read | Must not read |
 |---|---|---|---|
 | **Specification team** | Nino Bondonno, and Claude sessions on his machine | Everything | — |
-| **Implementation team** | Claude cloud sessions whose only sources are this repository and the MIT libraries below | This repository's `docs/`; `Nino6689/anycubic-lan` (MIT) and any clean libraries listed here; `Jezza34000/homeassistant_petkit` (MIT) for the cloud camera's Agora client, credited; Python, Home Assistant and dependency documentation; `home-assistant/core` for house style | `Nino6689/hass-anycubic`, `Nino6689/anycubic-cloud-api`, the PyPI packages `anycubic-cloud-api` and `anycubic-cloud-frontend`, `WaresWichall/hass-anycubic_cloud`, `dangreco/threedy`, and any other Anycubic Home Assistant integration or card |
+| **Implementation team** | Claude cloud sessions whose only sources are this repository and the MIT libraries below | This repository's `docs/`; `Nino6689/anycubic-lan` (MIT) and any clean libraries listed here; `Jezza34000/homeassistant_petkit` (MIT) for the cloud camera's Agora client, credited; Python, Home Assistant and dependency documentation; `home-assistant/core` for house style | `Nino6689/hass-anycubic`, `Nino6689/anycubic-cloud-api`, the PyPI package `anycubic-cloud-api`, the **0.x** releases of the PyPI package `anycubic-cloud-frontend` (1.0.0 and later are built from this repository's `frontend/` and are clean), `WaresWichall/hass-anycubic_cloud`, `dangreco/threedy`, and any other Anycubic Home Assistant integration or card |
 
 Rules: the specification team writes facts and required behaviour only; the
 implementation team writes all code and asks in `docs/QUESTIONS.md` rather
