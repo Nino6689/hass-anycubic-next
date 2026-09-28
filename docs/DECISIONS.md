@@ -48,3 +48,33 @@ changes 2.x behaviour it is deliberate, and noted.
 | 14 state words | **Translate** job and printer states. |
 | 15 translation text | **Write fresh.** The implementation team writes new English strings; other languages are translated from those. 2.x text is not reused. |
 | 16 Home Assistant tab components | Use components that exist in current Home Assistant; don't depend on removed internals. |
+
+## Round 2 — answers to the implementation team (2026-09-28)
+
+### Phase B (integration), questions Q1–Q9
+
+| Q | Answer |
+|---|---|
+| **Q1** order payloads | Exact `data` objects are now in `anycubic-lan` PROTOCOL.md §7.2. Changes from the interim choice: **temperature** sends `{"type": 0\|1\|2, "target_nozzle_temp", "target_hotbed_temp"}` (type 0 nozzle only, 1 bed only, 2 both — the unused figure is sent as 0 and ignored); **motors off** sends `null`, not `{}`; **setDry** includes `"remain_time": null` and always names the box. Fan, axis, feed, setInfo and setAutoFeed match your interim choice. |
+| **Q2.1** raw-report hook | Keep your override for now. `anycubic-lan` 0.2.0 will add a public raw-report listener and keep the last axis `move` state; switch to it then (tracked as a library task). |
+| **Q2.2** `print_speed_pct` | Reported only in `print` reports (`start`/`update`, state `updated`) under `data.settings.print_speed_pct` — see PROTOCOL.md. Also for `anycubic-lan` 0.2.0; until then the sensor may stay unavailable on LAN. |
+| **Q2.3** ACE model table | `40001` = **ACE Pro**. `40002` = a different unit whose name is being confirmed with a user (hass-anycubic #41); show it as the generic `ACE` until then. `anycubic-lan`'s table is to be corrected in 0.2.0. |
+| **Q3** `extfilbox` | Your interim keys are right: `action` `reportInfo`, `state` `success`, `data` `{id, type, color, loaded, status_type, current_status}`. |
+| **Q4** no MAC | 2.x used the MAC value as-is, and with no MAC that was the literal text **`None`**: unique ids `None-<key>`. Reproduce that exactly (compatibility), not the device id. |
+| **Q5** hybrid entry, several printers | Keep your rule (first id, with a warning) for the LAN beta. The cloud phase will match by model id as 2.x did. |
+| **Q6** frontend delivery | Use the PyPI package **`anycubic-cloud-frontend`** (1.0.0, built from `frontend/` in this repo) through the interface Phase C built: `locate_dir()`, `entrypoint_js()`, `webcomponent_name()`, `card_js()`, `card_hash()`. Keep the `www/` fallback for development. Add the requirement once 1.0.0 is published. |
+| **Q7** cloud entries during the LAN beta | Confirmed: not-ready with retries plus the repair issue. Never modify their data. |
+| **Q8** cloud-only entities on LAN entries | Leave them in the registry (Home Assistant shows "no longer provided"); never delete a user's entities automatically. |
+| **Q9.1** entity names | Confirmed: entity names are compatibility facts (COMPAT "Name (en)"); all other text is new. The eight preset names are fine. |
+| **Q9.2** DHCP matchers | Confirmed: MAC prefix `A4E88D*`, hostnames `anycubic*`, `kobra*`. |
+
+### Phase C (frontend), questions F1–F6
+
+| F | Answer |
+|---|---|
+| **F1** `card_config` to the panel | The integration passes the stored `card_config` object **as the panel's config itself** (keep accepting the nested form too). |
+| **F2** package interface | Confirmed as built. |
+| **F3** file refresh over LAN | The integration will make the `request_file_list_<source>` buttons **unavailable when the list cannot be fetched** over the current connection; use that as the signal and keep the notice. |
+| **F4** state words | The integration will ship **entity state translations** for `job_state` and `current_status`; prefer Home Assistant's own state formatting, falling back to your strings for unknown words. |
+| **F5** disabled entities | Correct as built. |
+| **F6** ETA beyond today | **Add the day** (short weekday) when the end is not today. |

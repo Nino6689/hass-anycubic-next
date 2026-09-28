@@ -24,9 +24,12 @@ code is compared mechanically with the GPL projects before release.
 | 2026-09-28 | Specification | Claude (local, Nino's machine) | The 2.x integration (`anycubic_cloud` 2.9.3) and library (`anycubic-cloud-api` 0.4.31) code and tests, read for facts; `Nino6689/anycubic-lan` docs | `BEHAVIOUR.md`; corrections to `COMPAT.md` §1, §4, §5, §7 | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local, frontend agent) | The 2.x frontend panel and card, read for facts | `FRONTEND.md` | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local) | `BEHAVIOUR.md` §9 and `FRONTEND.md` §7 open items; 2.x `icons.json` | `DECISIONS.md`; COMPAT §3.3 icons; V8 source allowed above | n/a — specification team |
+| 2026-09-28 | Specification | Claude (local) | PR #1 and PR #2 (for acceptance and similarity checks only); 2.x code and library, read for protocol facts | Round-2 answers in `DECISIONS.md`; exact command payloads in `anycubic-lan` PROTOCOL.md | n/a — specification team |
 
 ## Similarity checks
 
 | Date | Artefact | Compared against | Longest identical run | Result |
 |---|---|---|---|---|
 | 2026-09-28 | `docs/BEHAVIOUR.md` | 2.x integration, library and tests (`.py`, `.json`, `.yaml`), runs of 8+ words | 38 words — the filament density table (data) | Only key names, enum lists and constant tables reach 8 words; prose rewritten until none did |
+| 2026-09-28 | PR #2 `custom_components/anycubic_cloud/` | 2.x integration, 2.x library, WaresWichall | 40 — Anycubic's error-code table (Anycubic's own messages, passed as data in BEHAVIOUR); 12 — filament density table (physical data); next 7 — Home Assistant import blocks | Clean |
+| 2026-09-28 | PR #1 `frontend/src/` | 2.x `frontend_panel/src` | 5 — generic CSS centring rules; 4 — card default values required by COMPAT | Clean |
