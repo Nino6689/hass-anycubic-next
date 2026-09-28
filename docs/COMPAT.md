@@ -84,6 +84,11 @@ Facts a 3.0 release must reproduce so that an update from 2.x is seamless: nobod
 
 Existence rules (**Type** column): `printer` — every printer; `fdm` — filament printers only; `lcd` — resin printers only; `ace1`/`ace2` — only once that ACE unit is reported (entities must be *kept until* the unit reports, never dropped at setup — 2.x bug #41); `dry1`/`dry2` — per drying preset that has both a duration and a temperature set; `global` — once per entry.
 
+**State formats** (automations and templates compare these strings, so they are part of the contract):
+
+- Units are the exact strings in the tables, case included — e.g. `Layers` with a capital L. A changed unit also breaks long-term statistics.
+- `number` entities report their value as a **float**, so the state reads `45.0`, `360.0`, `0.0` — never `45`.
+
 ### 3.1 Observed on a live install (Kobra S1 + one ACE Pro)
 
 | Key (unique-id suffix) | Platform | Name (en) | Device | Unit | Device class | State class | Category | Enabled by default | Enum states | Extra attributes |
@@ -186,7 +191,7 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 | `file_list_local` | sensor | File List (Local) | printer | 'files' |  |  |  | yes |  |  |
 | `file_list_udisk` | sensor | File List (USB Disk) | printer | 'files' |  |  |  | yes |  |  |
 | `job_cost` | sensor | Job cost | printer |  | MONETARY |  |  | yes |  |  |
-| `job_current_layer` | sensor | Job Current Layer | printer | UNIT_LAYERS |  |  |  | yes |  |  |
+| `job_current_layer` | sensor | Job Current Layer | printer | `Layers` |  |  |  | yes |  |  |
 | `job_eta` | sensor | Job ETA | printer |  | TIMESTAMP |  |  | yes |  |  |
 | `job_filament_required` | sensor | Job filament required | printer | GRAMS | WEIGHT |  |  | yes |  |  |
 | `job_filament_runs_out_at` | sensor | Job filament runs out at | printer | PERCENTAGE |  |  |  | no |  |  |
@@ -198,7 +203,7 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 | `job_state` | sensor | Job State | printer |  |  |  |  | yes |  |  |
 | `job_time_elapsed` | sensor | Job Time Elapsed | printer | MINUTES |  |  |  | yes |  |  |
 | `job_time_remaining` | sensor | Job Time Remaining | printer | MINUTES |  |  |  | yes |  |  |
-| `job_total_layers` | sensor | Job Total Layers | printer | UNIT_LAYERS |  |  |  | yes |  |  |
+| `job_total_layers` | sensor | Job Total Layers | printer | `Layers` |  |  |  | yes |  |  |
 | `job_z_thick` | sensor | Job Z Thickness | printer |  |  |  |  | yes |  |  |
 | `last_error` | sensor | Last Error | printer |  |  |  |  | yes |  |  |
 | `last_error_code` | sensor | Last Error Code | printer |  |  |  |  | yes |  |  |
@@ -236,7 +241,7 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 | `job_bottom_time` | sensor | Job Bottom Time | LCD | SECONDS |  |  |  | yes |
 | `job_model_height` | sensor | Job Model Height | LCD | MILLIMETERS |  |  |  | yes |
 | `job_anti_alias_count` | sensor | Job Anti Alias | LCD |  |  |  |  | yes |
-| `job_bottom_layers` | sensor | Job Bottom Layers | LCD | UNIT_LAYERS |  |  |  | yes |
+| `job_bottom_layers` | sensor | Job Bottom Layers | LCD | `Layers` |  |  |  | yes |
 | `job_z_up_height` | sensor | Job Z Up Height | LCD | MILLIMETERS |  |  |  | yes |
 | `job_z_up_speed` | sensor | Job Z Up Speed | LCD |  |  |  |  | yes |
 | `job_z_down_speed` | sensor | Job Z Down Speed | LCD |  |  |  |  | yes |

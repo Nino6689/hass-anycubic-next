@@ -25,6 +25,7 @@ code is compared mechanically with the GPL projects before release.
 | 2026-09-28 | Specification | Claude (local, frontend agent) | The 2.x frontend panel and card, read for facts | `FRONTEND.md` | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local) | `BEHAVIOUR.md` §9 and `FRONTEND.md` §7 open items; 2.x `icons.json` | `DECISIONS.md`; COMPAT §3.3 icons; V8 source allowed above | n/a — specification team |
 | 2026-09-28 | Specification | Claude (local) | PR #1 and PR #2 (for acceptance and similarity checks only); 2.x code and library, read for protocol facts | Round-2 answers in `DECISIONS.md`; exact command payloads in `anycubic-lan` PROTOCOL.md | n/a — specification team |
+| 2026-09-28 | Specification | Claude (local) | Build `clean/lan-integration` @ `5c0b6f8` run black-box over a copy of a live 2.x install's storage and against the real printer | `ACCEPTANCE.md` (upgrade test U, U1–U4); COMPAT §3 state formats and the literal `Layers` unit | n/a — specification team |
 
 ## Similarity checks
 
