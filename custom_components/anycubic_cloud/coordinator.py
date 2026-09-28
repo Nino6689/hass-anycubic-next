@@ -150,7 +150,8 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         printer_ids = entry.data.get(CONF_PRINTER_IDS) or []
         if printer_ids:
             # The configured id (COMPAT §2). An entry covering several cloud
-            # printers can reach only one over LAN: the first (Q5).
+            # printers can reach only one over LAN: the first, with a warning
+            # (confirmed for the LAN beta, DECISIONS round 2, Q5).
             printer_id = int(printer_ids[0])
             if len(printer_ids) > 1:
                 _LOGGER.warning(

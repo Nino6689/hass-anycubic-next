@@ -167,6 +167,7 @@ class AnycubicConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_dhcp(
         self, discovery_info: DhcpServiceInfo
     ) -> ConfigFlowResult:
+        """A printer seen by DHCP (matchers confirmed, DECISIONS round 2, Q9.2)."""
         mac = format_mac(discovery_info.macaddress)
         host = discovery_info.ip
         await self.async_set_unique_id(mac)

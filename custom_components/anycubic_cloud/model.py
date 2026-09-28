@@ -421,8 +421,9 @@ class Printer:
     def external_spool(self) -> ExternalSpool | None:
         """The holder, or ``None`` when absent.
 
-        The ``extfilbox`` payload is not documented in anycubic-lan; the keys
-        read here are the conservative choice recorded as QUESTIONS.md Q3.
+        Keys as confirmed in DECISIONS round 2, Q3 (``id``, ``type``,
+        ``color``, ``loaded``; PROTOCOL §7.2); ``material`` and
+        ``external_shelves`` are also accepted.
         """
         raw = self.state.external_filament_box
         if raw is None:

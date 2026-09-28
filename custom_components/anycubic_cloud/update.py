@@ -3,7 +3,8 @@
 Firmware updates are a cloud service. Over LAN the printer's installed version
 comes from ``info.version`` and, with no target known, is also shown as the
 latest: no update is offered and nothing can be installed. The ACE firmware
-entities are cloud only and are not created on LAN.
+entities are cloud only and are not created on LAN; ones a 2.x install
+registered stay in the registry, never removed (DECISIONS round 2, Q8).
 """
 
 from __future__ import annotations

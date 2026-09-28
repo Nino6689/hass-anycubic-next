@@ -54,7 +54,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AnycubicConfigEntry) -> 
     host = str(entry.options.get(CONF_LAN_HOST) or "").strip()
     if not entry.options.get(CONF_LAN_MODE_ENABLED) or not host:
         if is_cloud_entry(entry):
-            # A 2.x cloud entry: leave its data alone and explain (Q7).
+            # A 2.x cloud entry: not ready with retries plus a repair issue,
+            # its data never modified (confirmed, DECISIONS round 2, Q7).
             ir.async_create_issue(
                 hass,
                 DOMAIN,

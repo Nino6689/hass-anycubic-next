@@ -1,6 +1,7 @@
 """Buttons (BEHAVIOUR §2.12).
 
-Cloud-only buttons are not created on LAN, except the three
+Cloud-only buttons are not created on LAN (ones a 2.x install registered stay
+in the registry, never removed: DECISIONS round 2, Q8), except the three
 ``request_file_list_<source>`` buttons: they always exist and are unavailable
 while their list cannot be fetched over the entry's current connection, which
 the frontend uses as its signal (DECISIONS round 2, F3).

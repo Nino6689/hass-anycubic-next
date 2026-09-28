@@ -96,7 +96,8 @@ class AnycubicEntity(CoordinatorEntity[AnycubicCoordinator]):
         self.entity_description = description
         printer = coordinator.printer
         self._attr_unique_id = f"{printer.identity.mac}-{description.key}"
-        # The frontend finds entities by translation key (FRONTEND §3.3).
+        # The frontend finds entities by translation key (FRONTEND §3.3). The
+        # English names are COMPAT's "Name (en)" (DECISIONS round 2, Q9.1).
         self._attr_translation_key = description.key
         self._attr_device_info = device_info(coordinator, description.device)
 
