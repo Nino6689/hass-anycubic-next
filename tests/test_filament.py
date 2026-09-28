@@ -127,6 +127,7 @@ def test_model_helpers() -> None:
     assert ace_model_name(40001) == "ACE Pro"
     assert ace_model_name(40002) == "ACE"
     assert ace_model_name(None) == "ACE"
+    assert ace_model_name(49999) == "ACE"
 
 
 def test_error_descriptions() -> None:

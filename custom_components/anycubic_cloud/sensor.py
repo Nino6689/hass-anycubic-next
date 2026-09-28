@@ -301,8 +301,8 @@ FDM_SENSORS: tuple[AnycubicSensorDescription, ...] = (
         key="print_speed_pct",
         kind=Kind.FDM,
         state_class=SensorStateClass.MEASUREMENT,
-        # anycubic-lan 0.1.0 does not parse the print-speed percentage (Q2).
-        value_fn=lambda c: None,
+        # Read from the raw print report (DECISIONS round 2, Q2.2).
+        value_fn=lambda c: c.printer.print_speed_pct,
     ),
     AnycubicSensorDescription(
         key="job_speed_mode",

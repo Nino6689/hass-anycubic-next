@@ -56,6 +56,7 @@ STORE_CAPABILITIES: Final = "anycubic_cloud.capabilities"
 STORE_VERSION: Final = 1
 
 # ACE model ids (COMPAT §2; anycubic-lan PROTOCOL §6.7 as corrected).
+# DECISIONS round 2, Q2.3: only 40001 is named; others are the generic "ACE".
 ACE_MODEL_NAMES: Final[dict[int, str]] = {40001: "ACE Pro"}
 ACE_MODEL_DEFAULT: Final = "ACE"
 

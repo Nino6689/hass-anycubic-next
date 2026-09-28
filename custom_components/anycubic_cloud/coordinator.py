@@ -43,7 +43,12 @@ from .const import (
 from .identity import lan_printer_id, unique_id_mac
 from .lan import LanLink
 from .ledger import FilamentLedger, Forecast
-from .model import Printer, PrinterIdentity, material_type_from_device_type
+from .model import (
+    Printer,
+    PrinterIdentity,
+    material_type_from_device_type,
+    print_speed_pct,
+)
 
 if TYPE_CHECKING:
     from anycubic_lan import PrinterConnectionInfo
@@ -231,6 +236,10 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
             and self._printer is not None
         ):
             self._printer.axis_move_state = envelope.state
+        elif envelope.kind == ReportKind.PRINT and self._printer is not None:
+            speed = print_speed_pct(envelope.action, envelope.state, envelope.data)
+            if speed is not None:
+                self._printer.print_speed_pct = speed
 
     def _handle_state(self, state: PrinterState) -> None:
         printer = self._printer

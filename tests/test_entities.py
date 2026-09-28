@@ -13,6 +13,7 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.anycubic_cloud.const import DOMAIN
+from custom_components.anycubic_cloud.model import print_speed_pct
 
 from . import payloads
 from .conftest import MockPrinter, lan_entry, setup_entry
@@ -264,6 +265,56 @@ async def test_axis(
     # A reply without coordinates keeps the last position.
     await _feed(hass, printer, payloads.envelope("axis", {}, action="query"))
     assert _get(hass, "sensor.axis_position_x").state == "47.0"
+
+
+async def test_print_speed_from_print_reports(
+    hass: HomeAssistant, loaded: MockConfigEntry, printer: MockPrinter
+) -> None:
+    """Round 2, Q2.2: only print start/update reports in state updated."""
+    sensor = f"sensor.{P}_print_speed"
+    project = payloads.job()
+    await _feed(
+        hass,
+        printer,
+        payloads.info(project=project),
+        payloads.envelope(
+            "print",
+            project | {"settings": {"print_speed_pct": 150}},
+            action="update",
+            state="updated",
+        ),
+    )
+    assert _get(hass, sensor).state == "150"
+    for action, state, settings in (
+        ("update", "done", {"print_speed_pct": 80}),
+        ("report", "updated", {"print_speed_pct": 80}),
+        ("start", "updated", {"fan_speed_pct": 80}),
+        ("start", "updated", {"print_speed_pct": True}),
+        ("start", "updated", None),
+    ):
+        await _feed(
+            hass,
+            printer,
+            payloads.envelope(
+                "print",
+                project | {"settings": settings},
+                action=action,
+                state=state,
+            ),
+        )
+        assert _get(hass, sensor).state == "150", (action, state, settings)
+    await _feed(
+        hass,
+        printer,
+        payloads.envelope(
+            "print",
+            project | {"settings": {"print_speed_pct": 99.6}},
+            action="start",
+            state="updated",
+        ),
+    )
+    assert _get(hass, sensor).state == "100"
+    assert print_speed_pct("update", "updated", ["not", "a", "mapping"]) is None
 
 
 async def test_external_spool(

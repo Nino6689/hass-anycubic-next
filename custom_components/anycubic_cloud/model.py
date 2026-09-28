@@ -77,10 +77,32 @@ def material_type_from_device_type(device_type: str | None) -> str | None:
 
 
 def ace_model_name(model_id: int | None) -> str:
-    """Device model of an ACE unit (COMPAT §2)."""
+    """Device model of an ACE unit (COMPAT §2; DECISIONS round 2, Q2.3).
+
+    ``40001`` is the ACE Pro; any other or unknown id is the generic ACE.
+    """
     if model_id is None:
         return ACE_MODEL_DEFAULT
     return ACE_MODEL_NAMES.get(model_id, ACE_MODEL_DEFAULT)
+
+
+def print_speed_pct(action: str | None, state: str | None, data: object) -> int | None:
+    """The speed % a ``print`` report carries, if any (round 2, Q2.2).
+
+    Only ``start``/``update`` reports in state ``updated`` carry it, under
+    ``data.settings.print_speed_pct``.
+    """
+    if action not in ("start", "update") or state != "updated":
+        return None
+    if not isinstance(data, Mapping):
+        return None
+    settings = data.get("settings")
+    if not isinstance(settings, Mapping):
+        return None
+    value = settings.get("print_speed_pct")
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    return round(value)
 
 
 def _number(value: float | None) -> float | None:
@@ -125,6 +147,8 @@ class Printer:
     state: PrinterState = field(default_factory=PrinterState)
     info_seen: bool = False
     axis_move_state: str | None = None
+    print_speed_pct: int | None = None
+    """From ``print`` reports' ``data.settings`` (PROTOCOL §7.2, round 2 Q2.2)."""
     remembered_light_types: frozenset[int] = frozenset()
 
     # -- identity ----------------------------------------------------------
