@@ -48,8 +48,15 @@ Constants `ENTRYPOINT_JS`, `CARD_JS`, `CARD_HASH`, `PANEL_HASH`,
 `WEBCOMPONENT_NAME` and `FRONTEND_VERSION` are exported too. Build the wheel
 after `npm run build`: `python -m build --wheel python`.
 
-The panel reads its card settings from the panel config: either the entry's
-`card_config` object as the config itself, or nested under a `card_config` key.
+The panel reads its card settings from the panel config: the integration
+passes the entry's stored `card_config` object as the config itself. The same
+object nested under a `card_config` key is also accepted.
+
+State words (Status, Availability, the header) use Home Assistant's translated
+entity state (`hass.formatEntityState`) and fall back to the card's own strings
+for states it cannot translate. A file list's refresh control is disabled, with
+a notice, while its `request_file_list_<source>` button is unavailable or
+missing. The ETA adds a short weekday when the job ends on another day.
 
 ## Source layout
 
