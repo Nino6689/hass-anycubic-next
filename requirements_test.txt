@@ -1,6 +1,9 @@
 # Test and lint dependencies (CI and local development).
 anycubic-lan==0.1.0
-pytest-homeassistant-custom-component
+# Releases after 0.13.316 (Home Assistant 2026.3+) require Python 3.14; on
+# 3.13 pin the last one that supports it, or pip backtracks for minutes.
+pytest-homeassistant-custom-component==0.13.316; python_version < "3.14"
+pytest-homeassistant-custom-component; python_version >= "3.14"
 PyTurboJPEG
 ruff
 mypy
