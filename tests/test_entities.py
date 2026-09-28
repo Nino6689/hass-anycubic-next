@@ -106,11 +106,11 @@ async def test_idle_printer(hass: HomeAssistant, loaded: MockConfigEntry) -> Non
     )
     assert _get(hass, f"sensor.{P}_print_speed").state == STATE_UNAVAILABLE
     assert _get(hass, f"select.{P}_print_speed_mode").state == STATE_UNAVAILABLE
-    assert _get(hass, f"update.{P}_printer_firmware").state == "off"
-    assert (
-        _get(hass, f"update.{P}_printer_firmware").attributes["installed_version"]
-        == "2.7.2.7"
-    )
+    # LAN knows the installed firmware only; the latest stays unknown (G10, U5).
+    firmware = _get(hass, f"update.{P}_printer_firmware")
+    assert firmware.state == STATE_UNKNOWN
+    assert firmware.attributes["installed_version"] == "2.7.2.7"
+    assert firmware.attributes["latest_version"] is None
     assert _get(hass, f"switch.{P}_ai_failure_detection").state == "off"
     assert _get(hass, f"light.{P}_printer_light").state == "on"
     assert (

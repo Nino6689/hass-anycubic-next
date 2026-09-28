@@ -1,8 +1,9 @@
 """Firmware update entity (BEHAVIOUR §2.17, G10, DECISIONS V17).
 
 Firmware updates are a cloud service. Over LAN the printer's installed version
-comes from ``info.version`` and, with no target known, is also shown as the
-latest: no update is offered and nothing can be installed. The ACE firmware
+comes from ``info.version``; the latest version stays unknown, never a copy of
+the installed one, until the cloud supplies a target (G10, acceptance U5).
+Nothing can be installed. The ACE firmware
 entities are cloud only and are not created on LAN; ones a 2.x install
 registered stay in the registry, never removed (DECISIONS round 2, Q8).
 """
@@ -62,4 +63,5 @@ class PrinterFirmware(AnycubicEntity, UpdateEntity):
 
     @property
     def latest_version(self) -> str | None:
-        return self.installed_version
+        # Only the cloud knows a target; LAN leaves it unknown (G10).
+        return None
