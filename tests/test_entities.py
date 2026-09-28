@@ -181,7 +181,7 @@ async def test_running_job(
     for key in ("job_current_layer", "job_total_layers"):
         unit = _get(hass, f"sensor.{P}_{key}").attributes["unit_of_measurement"]
         assert unit == "Layers"  # COMPAT's exact text (U1)
-    assert _get(hass, f"sensor.{P}_job_filament_used").state == "120.0"
+    assert _get(hass, f"sensor.{P}_job_filament_used").state == "120"
     assert _get(hass, f"sensor.{P}_job_state").state == "printing"
     assert _get(hass, f"sensor.{P}_job_eta").state == "2026-09-28T12:42:00+00:00"
     assert _get(hass, f"sensor.{P}_current_status").state == "busy"

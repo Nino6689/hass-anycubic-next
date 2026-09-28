@@ -157,6 +157,10 @@ config flow in an empty Home Assistant, the hardware commands, and the panel and
 | X2 | Over the cloud every ACE reel in the card and panel art is drawn **empty**. `consumables_percent` is 0 for every slot, as BEHAVIOUR says it always is. | Fill each reel from the slot's `ace_slot_N_filament_remaining_percent` (`secondary_…` for ACE 2). Unknown = full. Never use `consumables_percent` (FRONTEND.md corrected; DECISIONS 'Reel fill'). |
 | X3 | The cloud camera doesn't stream. HA shows *"Could not open the Anycubic cloud camera: The camera channel is encrypted: pass the Agora SDK public key"*. | This is fixed in the library (its ACCEPTANCE L3: the key becomes its default). Once the library is updated, the integration needs no key handling of its own. Re-test the stream after that. |
 
+X1: **Fixed in 30bd535.**
+
+X2: **Fixed in 4058653.**
+
 ### Final re-test — 2026-09-28, `clean/cloud` @ `3ed37dd` with `anycubic-cloud-client` `main` @ `ea1b7e1`
 
 - **X1 confirmed.** `job_filament_used` matches 2.x (`65`). 128 of 129 compared entities now match live 2.x exactly. The only

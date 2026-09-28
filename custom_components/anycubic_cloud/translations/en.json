@@ -9,6 +9,27 @@
           "local": "Directly on my network (LAN Mode)"
         }
       },
+      "cloud": {
+        "title": "Anycubic account",
+        "description": "Paste the access token from Anycubic Slicer Next (or the whole configuration file section that holds it). Home Assistant signs in with it; it never asks for your password.",
+        "data": {
+          "user_token": "Access token",
+          "user_device_id": "Android device ID",
+          "region": "Anycubic region"
+        },
+        "data_description": {
+          "user_token": "The token, or text that contains it. Quotes and surrounding configuration text are removed.",
+          "user_device_id": "Only for a token taken from the Android app. Leave empty otherwise.",
+          "region": "The Anycubic service your account belongs to. Accounts are not shared between the two."
+        }
+      },
+      "printer": {
+        "title": "Choose printers",
+        "description": "Pick the printers on your Anycubic account that this entry should cover.",
+        "data": {
+          "printer_ids": "Printers"
+        }
+      },
       "local": {
         "title": "Printer in LAN Mode",
         "description": "Switch LAN Mode on at the printer first (Settings → Network → LAN Mode). The printer then works without the Anycubic cloud.",
@@ -42,6 +63,33 @@
           "lan_mode_enabled": "Talk to the printer directly on your network. LAN Mode must also be switched on at the printer.",
           "lan_host": "The printer's address on your network, for example 192.168.1.50. You find it on the printer under Settings → Network."
         }
+      },
+      "auth_mode_pick": {
+        "title": "Kind of token",
+        "menu_options": {
+          "auth_mode_web": "Token from the Anycubic website",
+          "auth_mode_slicer": "Token from Anycubic Slicer Next",
+          "auth_mode_android": "Token from the Android app"
+        }
+      },
+      "auth_mode_web": {
+        "title": "Website token",
+        "data": {
+          "user_token": "Access token"
+        }
+      },
+      "auth_mode_slicer": {
+        "title": "Slicer token",
+        "data": {
+          "user_token": "Access token"
+        }
+      },
+      "auth_mode_android": {
+        "title": "Android app token",
+        "data": {
+          "user_token": "Access token",
+          "user_device_id": "Android device ID"
+        }
       }
     },
     "error": {
@@ -49,12 +97,23 @@
       "lan_printer_in_cloud_mode": "The printer answered, but LAN Mode is off. On the printer, open Settings → Network and switch LAN Mode on, then try again.",
       "lan_unsupported_printer": "The printer answered with something this integration cannot use. Older models (Kobra 2 and earlier) have no LAN Mode.",
       "lan_unreachable": "No printer answered at this address. Check that the printer is switched on, awake and on the same network.",
-      "lan_different_printer": "A different printer answered at this address. To add another printer, set up a new entry instead."
+      "lan_different_printer": "A different printer answered at this address. To add another printer, set up a new entry instead.",
+      "invalid_token_format": "No token was found in what you pasted.",
+      "token_expired": "This token has expired. Sign in to Anycubic Slicer Next again and copy the new one.",
+      "token_corrupted": "This token is damaged: its signature does not match. Copy it again, in full.",
+      "invalid_auth": "Anycubic did not accept this token.",
+      "wrong_token_type": "This is not an access token. Copy the access token from Anycubic Slicer Next.",
+      "cannot_read_response": "Anycubic answered with something this integration could not read. This is a fault in the integration; please report it with your printer model and firmware.",
+      "cannot_connect": "Could not reach the Anycubic cloud. Try again in a moment.",
+      "no_printers": "Choose at least one printer. If the list is empty, the account has no printers - a printer in LAN Mode leaves the account.",
+      "invalid_printer": "Anycubic could not give the details of a chosen printer. A printer in LAN Mode leaves the account."
     },
     "abort": {
       "already_configured": "This printer is already set up. If its address changed, the entry now uses the new one.",
-      "cloud_not_supported_yet": "Anycubic account support is coming in a later 3.0 beta. For now, set the printer up in LAN Mode.",
-      "reconfigure_successful": "The settings were saved and the printer reconnected."
+      "reconfigure_successful": "The settings were saved and the printer reconnected.",
+      "cloud_credentials_unavailable": "The Anycubic app credentials this integration needs could not be loaded, so Anycubic accounts cannot be used right now. See the repair notice for details.",
+      "reauth_successful": "The new token was saved and the entry restarted.",
+      "wrong_account": "This token belongs to a different Anycubic account than the entry."
     }
   },
   "options": {
@@ -150,18 +209,25 @@
         "4": "Always",
         "5": "Never"
       }
+    },
+    "region": {
+      "options": {
+        "international": "International (anycubic.com)",
+        "china": "China (anycubicloud.com)"
+      }
     }
   },
   "issues": {
-    "cloud_not_supported_yet": {
-      "title": "{name} waits for cloud support",
-      "description": "{name} uses your Anycubic account. This test release of 3.0 only talks to printers in LAN Mode, so the entry is on hold; nothing about it has been changed or removed. It starts working again with the 3.0 release that adds cloud support, or right away if you switch LAN Mode on for the printer and enter its address in the entry's options."
+    "cloud_credentials_unavailable": {
+      "title": "Anycubic cloud features are unavailable",
+      "description": "The Anycubic app credentials are read at run time from the {package} Python package, which could not be loaded or is incomplete. Printers in LAN Mode keep working; entries that need the Anycubic cloud wait until it is available. Your entries and their settings are unchanged. Reinstalling the integration, then restarting Home Assistant, usually fixes this."
+    },
+    "token_expiring": {
+      "title": "The Anycubic token of {name} expires soon",
+      "description": "The token {name} uses expires in {days} days. Anycubic tokens last about 90 days and cannot be renewed automatically. Copy a fresh token (helpers: [macOS]({tool_macos}), [Windows]({tool_windows}), [browser]({tool_browser})) and enter it with [re-authentication]({reauth_url})."
     }
   },
   "exceptions": {
-    "cloud_not_supported_yet": {
-      "message": "{name} needs the Anycubic cloud, which arrives in a later 3.0 beta. Its settings are kept."
-    },
     "lan_mode_off": {
       "message": "LAN Mode is switched off for this entry. Switch it on in the entry's options."
     },
@@ -187,13 +253,13 @@
       "message": "Not possible while a print is running."
     },
     "cloud_only_control": {
-      "message": "This setting can only be changed through the Anycubic cloud."
+      "message": "This can only be done through the Anycubic cloud, which cannot reach a printer in LAN Mode."
     },
     "cloud_only_action": {
       "message": "The action {action} needs the Anycubic cloud, which a printer in LAN Mode cannot use."
     },
     "speed_mode_unavailable": {
-      "message": "This speed mode is not one the printer offers. Over LAN the printer lists no speed modes."
+      "message": "This speed mode is not one the printer offers for the job. Over LAN the printer lists no speed modes."
     },
     "printer_not_busy": {
       "message": "The printer is not busy."
@@ -223,10 +289,58 @@
       "message": "The printer is busy."
     },
     "mqtt_connect_timeout": {
-      "message": "The live connection to the Anycubic cloud could not be opened."
+      "message": "The live connection to the Anycubic cloud could not be opened. Try switching on the manual MQTT connection, then try again."
     },
     "file_list_unavailable": {
       "message": "The {source} file list cannot be fetched over this printer's current connection."
+    },
+    "cloud_credentials_unavailable": {
+      "message": "The Anycubic app credentials could not be loaded, so this entry cannot reach the Anycubic cloud yet. Its settings are kept."
+    },
+    "no_token": {
+      "message": "This entry has no Anycubic token."
+    },
+    "token_rejected": {
+      "message": "Anycubic no longer accepts this entry's token."
+    },
+    "cloud_read_error": {
+      "message": "Anycubic answered with something this integration could not read. This is a fault in the integration; please report it with your printer model and firmware."
+    },
+    "cloud_unavailable": {
+      "message": "The Anycubic cloud is not answering: {error}"
+    },
+    "cloud_not_available": {
+      "message": "The Anycubic cloud is not available for this printer."
+    },
+    "printer_not_in_cloud": {
+      "message": "The Anycubic cloud cannot supply a printer of this entry. A printer in LAN Mode leaves the Anycubic account: to use it that way, switch LAN Mode on in the entry's options and enter the printer's address."
+    },
+    "printer_removed": {
+      "message": "The Anycubic cloud reports this printer removed from the account, which LAN Mode does."
+    },
+    "no_printers": {
+      "message": "This entry covers no printers."
+    },
+    "cloud_error": {
+      "message": "The Anycubic cloud refused the request: {message}"
+    },
+    "cloud_file_delete_failed": {
+      "message": "The Anycubic cloud did not delete the file."
+    },
+    "cloud_storage_full": {
+      "message": "There is not enough free space in the Anycubic cloud storage for this file."
+    },
+    "slots_required": {
+      "message": "This printer has an ACE: give one slot per colour of the file."
+    },
+    "slots_not_allowed": {
+      "message": "This printer has no ACE: leave the slots out."
+    },
+    "slot_not_on_ace": {
+      "message": "A chosen slot is not on a connected ACE (slots 1-4 are on the first ACE, 5-8 on the second)."
+    },
+    "slot_mapping_failed": {
+      "message": "The slots do not fit the file: {message}"
     }
   },
   "services": {
@@ -1196,6 +1310,54 @@
       },
       "secondary_dry_status_remaining_time": {
         "name": "Secondary Drying Remaining Time"
+      },
+      "file_list_cloud": {
+        "name": "File List (Cloud)"
+      },
+      "file_list_local": {
+        "name": "File List (Local)"
+      },
+      "file_list_udisk": {
+        "name": "File List (USB Disk)"
+      },
+      "job_anti_alias_count": {
+        "name": "Job Anti Alias"
+      },
+      "job_bottom_layers": {
+        "name": "Job Bottom Layers"
+      },
+      "job_bottom_time": {
+        "name": "Job Bottom Time"
+      },
+      "job_model_height": {
+        "name": "Job Model Height"
+      },
+      "job_off_time": {
+        "name": "Job Off Time"
+      },
+      "job_on_time": {
+        "name": "Job On Time"
+      },
+      "job_z_down_speed": {
+        "name": "Job Z Down Speed"
+      },
+      "job_z_thick": {
+        "name": "Job Z Thickness"
+      },
+      "job_z_up_height": {
+        "name": "Job Z Up Height"
+      },
+      "job_z_up_speed": {
+        "name": "Job Z Up Speed"
+      },
+      "material_used_total": {
+        "name": "Total Material Used"
+      },
+      "print_count_total": {
+        "name": "Total Print Count"
+      },
+      "print_time_total_hrs": {
+        "name": "Total Print Time"
       }
     },
     "binary_sensor": {
@@ -1237,6 +1399,9 @@
       },
       "secondary_dry_status_is_drying": {
         "name": "Secondary Drying Active"
+      },
+      "mqtt_connection_active": {
+        "name": "MQTT Connection Active"
       }
     },
     "button": {
@@ -1362,6 +1527,9 @@
       },
       "request_file_list_udisk": {
         "name": "Request File List (USB Disk)"
+      },
+      "refresh_mqtt_connection": {
+        "name": "Refresh MQTT Connection"
       }
     },
     "number": {
@@ -1428,6 +1596,9 @@
       },
       "secondary_multi_color_box_runout_refill": {
         "name": "Secondary ACE Run-out Refill"
+      },
+      "manual_mqtt_connection_enabled": {
+        "name": "Manual MQTT Connection Enabled"
       }
     },
     "light": {
@@ -1438,11 +1609,25 @@
     "update": {
       "fw_version": {
         "name": "Printer Firmware"
+      },
+      "multi_color_box_fw_version": {
+        "name": "ACE Firmware"
+      },
+      "secondary_multi_color_box_fw_version": {
+        "name": "Secondary ACE Firmware"
       }
     },
     "camera": {
       "camera": {
         "name": "Camera"
+      },
+      "cloud_camera": {
+        "name": "Cloud camera"
+      }
+    },
+    "image": {
+      "job_image_url": {
+        "name": "Job Preview"
       }
     }
   }

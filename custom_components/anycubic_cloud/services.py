@@ -1,8 +1,9 @@
 """Actions (BEHAVIOUR §4, COMPAT §4).
 
 All 27 actions are registered when the integration loads, even with no entry,
-so automations that use them validate. Those with a LAN form work on LAN
-entries; the cloud-only ones raise a translated error there.
+so automations that use them validate. Orders with a LAN form go over LAN
+while its link is up; the rest go to the cloud, and raise a translated error
+when the printer cannot be reached that way (LAN-only entries, §4.7).
 """
 
 from __future__ import annotations
@@ -10,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from anycubic_cloud_client import FileSource
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
@@ -18,9 +20,9 @@ import voluptuous as vol
 
 from . import control
 from .const import DOMAIN, SET_SLOT_MATERIALS
-from .coordinator import AnycubicCoordinator
+from .coordinator import AnycubicCoordinator, AnycubicRuntime
 from .identity import printer_identifier
-from .model import WORK_BUSY
+from .upload import async_print_and_upload
 
 ATTR_CONFIG_ENTRY = "config_entry"
 ATTR_DEVICE_ID = "device_id"
@@ -109,8 +111,7 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> AnycubicCoordinator:
         raise _error("config_entry_not_found")
     if entry.state is not ConfigEntryState.LOADED:
         raise _error("config_entry_not_loaded")
-    coordinator: AnycubicCoordinator = entry.runtime_data
-    printer = coordinator.printer
+    runtime: AnycubicRuntime = entry.runtime_data
     if (device_ids := call.data.get(ATTR_DEVICE_ID)) is not None:
         # device_id wins when both are given.
         if isinstance(device_ids, list):
@@ -118,15 +119,16 @@ def _resolve(hass: HomeAssistant, call: ServiceCall) -> AnycubicCoordinator:
                 raise _error("one_printer_at_a_time")
             device_ids = device_ids[0]
         device = dr.async_get(hass).async_get(device_ids)
-        if (
-            device is None
-            or printer_identifier(entry, printer.printer_id) not in device.identifiers
-        ):
-            raise _error("printer_not_found")
-        return coordinator
-    if call.data[ATTR_PRINTER_ID] != printer.printer_id:
+        if device is not None:
+            for coordinator in runtime.coordinators.values():
+                identifier = printer_identifier(entry, coordinator.printer_id)
+                if identifier in device.identifiers:
+                    return coordinator
         raise _error("printer_not_found")
-    return coordinator
+    found = runtime.coordinators.get(call.data[ATTR_PRINTER_ID])
+    if found is None:
+        raise _error("printer_not_found")
+    return found
 
 
 # -- handlers ------------------------------------------------------------------
@@ -160,31 +162,57 @@ async def _retract(coordinator: AnycubicCoordinator, call: ServiceCall) -> None:
     await control.async_ace_retract(coordinator, call.data[ATTR_BOX_ID], refresh=False)
 
 
-async def _cloud_only(coordinator: AnycubicCoordinator, call: ServiceCall) -> None:
-    # No LAN form (BEHAVIOUR §4.7); the cloud cannot reach a printer in LAN
-    # Mode, and cloud support arrives in a later 3.0 release.
-    raise _error("cloud_only_action", action=call.service)
+def _cloud_only(handler: Handler, *, account_wide: bool = False) -> Handler:
+    """Actions with no LAN form: refused with ``cloud_only_action`` when the
+    printer cannot be reached over the cloud (LAN-only entries, a printer on
+    LAN; BEHAVIOUR §4.7). Account-wide actions only need the account."""
 
+    async def wrapped(coordinator: AnycubicCoordinator, call: ServiceCall) -> None:
+        account = coordinator.runtime.cloud
+        if account is None or (not account_wide and not coordinator.uses_cloud):
+            raise _error("cloud_only_action", action=call.service)
+        await handler(coordinator, call)
 
-def _running_job_required(coordinator: AnycubicCoordinator) -> None:
-    """Checked in this order (BEHAVIOUR §4.6)."""
-    printer = coordinator.printer
-    if printer.work_status != WORK_BUSY:
-        raise _error("printer_not_busy")
-    if printer.job is None:
-        raise _error("no_job")
-    if not printer.job_in_progress:
-        raise _error("job_not_in_progress")
+    return wrapped
 
 
 async def _speed_mode(coordinator: AnycubicCoordinator, call: ServiceCall) -> None:
-    _running_job_required(coordinator)
-    printer = coordinator.printer
-    codes = {mode["mode"] for mode in printer.speed_modes}
-    # LAN publishes no list of modes, so this always refuses there. With a
-    # list (cloud phase) the code would be sent as a print/update order.
-    if call.data[ATTR_SPEED_MODE] not in codes:
-        raise _error("speed_mode_unavailable")
+    await control.async_set_speed_mode(coordinator, call.data[ATTR_SPEED_MODE])
+
+
+def _resin(key: str, field: str) -> Handler:
+    async def handler(coordinator: AnycubicCoordinator, call: ServiceCall) -> None:
+        await control.async_set_resin_setting(coordinator, key, call.data[field])
+
+    return handler
+
+
+async def _print_local_file(
+    coordinator: AnycubicCoordinator, call: ServiceCall
+) -> None:
+    await control.async_print_local_file(coordinator, call.data[ATTR_FILENAME])
+
+
+def _delete_printer_file(source: FileSource) -> Handler:
+    async def handler(coordinator: AnycubicCoordinator, call: ServiceCall) -> None:
+        await control.async_delete_printer_file(
+            coordinator, source, call.data[ATTR_FILENAME]
+        )
+
+    return handler
+
+
+async def _delete_cloud_file(
+    coordinator: AnycubicCoordinator, call: ServiceCall
+) -> None:
+    await control.async_delete_cloud_file(coordinator, call.data[ATTR_FILE_ID])
+
+
+def _print_and_upload(save_in_cloud: bool) -> Handler:
+    async def handler(coordinator: AnycubicCoordinator, call: ServiceCall) -> None:
+        await async_print_and_upload(coordinator, call, save_in_cloud=save_in_cloud)
+
+    return handler
 
 
 def _temperature(key: str) -> Handler:
@@ -210,12 +238,27 @@ SERVICES: dict[str, tuple[vol.All, Handler]] = {
     },
     "multi_color_box_filament_extrude": (EXTRUDE_SCHEMA, _extrude),
     "multi_color_box_filament_retract": (RETRACT_SCHEMA, _retract),
-    "print_and_upload_save_in_cloud": (PRINT_UPLOAD_SCHEMA, _cloud_only),
-    "print_and_upload_no_cloud_save": (PRINT_UPLOAD_SCHEMA, _cloud_only),
-    "print_local_file": (FILENAME_SCHEMA, _cloud_only),
-    "delete_file_local": (FILENAME_SCHEMA, _cloud_only),
-    "delete_file_udisk": (FILENAME_SCHEMA, _cloud_only),
-    "delete_file_cloud": (FILE_ID_SCHEMA, _cloud_only),
+    "print_and_upload_save_in_cloud": (
+        PRINT_UPLOAD_SCHEMA,
+        _cloud_only(_print_and_upload(True)),
+    ),
+    "print_and_upload_no_cloud_save": (
+        PRINT_UPLOAD_SCHEMA,
+        _cloud_only(_print_and_upload(False)),
+    ),
+    "print_local_file": (FILENAME_SCHEMA, _cloud_only(_print_local_file)),
+    "delete_file_local": (
+        FILENAME_SCHEMA,
+        _cloud_only(_delete_printer_file(FileSource.LOCAL)),
+    ),
+    "delete_file_udisk": (
+        FILENAME_SCHEMA,
+        _cloud_only(_delete_printer_file(FileSource.UDISK)),
+    ),
+    "delete_file_cloud": (
+        FILE_ID_SCHEMA,
+        _cloud_only(_delete_cloud_file, account_wide=True),
+    ),
     "change_print_speed_mode": (SPEED_MODE_SCHEMA, _speed_mode),
     "change_print_target_nozzle_temperature": (
         TEMPERATURE_SCHEMA,
@@ -228,10 +271,16 @@ SERVICES: dict[str, tuple[vol.All, Handler]] = {
     "change_print_fan_speed": (SPEED_SCHEMA, _fan("fan_speed_pct")),
     "change_print_aux_fan_speed": (SPEED_SCHEMA, _fan("aux_fan_speed_pct")),
     "change_print_box_fan_speed": (SPEED_SCHEMA, _fan("box_fan_level")),
-    "change_print_bottom_layers": (LAYERS_SCHEMA, _cloud_only),
-    "change_print_bottom_time": (TIME_SCHEMA, _cloud_only),
-    "change_print_off_time": (TIME_SCHEMA, _cloud_only),
-    "change_print_on_time": (TIME_SCHEMA, _cloud_only),
+    "change_print_bottom_layers": (
+        LAYERS_SCHEMA,
+        _cloud_only(_resin("bottom_layers", ATTR_LAYERS)),
+    ),
+    "change_print_bottom_time": (
+        TIME_SCHEMA,
+        _cloud_only(_resin("bottom_time", ATTR_TIME)),
+    ),
+    "change_print_off_time": (TIME_SCHEMA, _cloud_only(_resin("off_time", ATTR_TIME))),
+    "change_print_on_time": (TIME_SCHEMA, _cloud_only(_resin("on_time", ATTR_TIME))),
 }
 
 

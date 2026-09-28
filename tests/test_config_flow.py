@@ -126,7 +126,8 @@ async def test_local_existing_printer_moves_address(
     await hass.async_block_till_done(wait_background_tasks=True)
 
 
-async def test_cloud_step_explains(hass: HomeAssistant) -> None:
+async def test_cloud_step_without_credentials(hass: HomeAssistant) -> None:
+    """Without Anycubic's app credentials the cloud steps explain and stop."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
@@ -134,7 +135,7 @@ async def test_cloud_step_explains(hass: HomeAssistant) -> None:
         result["flow_id"], {"next_step_id": "cloud"}
     )
     assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "cloud_not_supported_yet"
+    assert result["reason"] == "cloud_credentials_unavailable"
 
 
 async def test_dhcp_discovery(hass: HomeAssistant, printer: MockPrinter) -> None:
@@ -295,7 +296,7 @@ async def test_reconfigure_cloud_entry(
             other["flow_id"], {"next_step_id": step}
         )
         assert other["type"] is FlowResultType.ABORT
-        assert other["reason"] == "cloud_not_supported_yet"
+        assert other["reason"] == "cloud_credentials_unavailable"
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"next_step_id": "connection"}
     )
@@ -310,12 +311,12 @@ async def test_reconfigure_cloud_entry(
     await hass.async_block_till_done(wait_background_tasks=True)
 
 
-async def test_reauth_explains(hass: HomeAssistant) -> None:
+async def test_reauth_without_credentials(hass: HomeAssistant) -> None:
     entry = cloud_entry(lan=False)
     entry.add_to_hass(hass)
     result = await entry.start_reauth_flow(hass)
     assert result["type"] is FlowResultType.ABORT
-    assert result["reason"] == "cloud_not_supported_yet"
+    assert result["reason"] == "cloud_credentials_unavailable"
 
 
 async def _options(hass: HomeAssistant, entry: MockConfigEntry, step: str) -> Any:

@@ -49,7 +49,19 @@ def test_flow_errors_and_aborts_exist() -> None:
     text = (ROOT / "config_flow.py").read_text()
     for reason in set(re.findall(r'reason="([a-z_]+)"', text)):
         assert reason in STRINGS["config"]["abort"], reason
-    assert "cloud_not_supported_yet" in STRINGS["config"]["abort"]
+    assert "cloud_not_supported_yet" not in STRINGS["config"]["abort"]
+    cloud = {
+        "invalid_token_format",
+        "token_expired",
+        "token_corrupted",
+        "invalid_auth",
+        "wrong_token_type",
+        "cannot_read_response",
+        "cannot_connect",
+        "no_printers",
+        "invalid_printer",
+    }
+    assert cloud <= set(STRINGS["config"]["error"])
 
 
 def test_entity_names_exist() -> None:

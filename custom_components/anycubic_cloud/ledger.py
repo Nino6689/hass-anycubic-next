@@ -14,7 +14,7 @@ Only the first ACE's slots are tracked (BEHAVIOUR §3.1).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import logging
 from typing import TYPE_CHECKING, Any
 
@@ -103,6 +103,8 @@ class _RunningJob:
     task_id: int | None
     name: str | None
     length: float | None
+    shares: dict[int, float] = field(default_factory=dict)
+    """The cloud job's split between colours, when it has several."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -305,6 +307,8 @@ class FilamentLedger:
                 running = self._running[pid] = _RunningJob(
                     job_id, printer.job_name, length
                 )
+            if shares := printer.job_paint_shares:
+                running.shares = shares
             elif length is not None and (
                 running.length is None or length >= running.length
             ):
@@ -321,10 +325,17 @@ class FilamentLedger:
                 length = final
         if not length or length <= 0 or running.task_id is None:
             return False
-        return self._charge(printer, running.task_id, running.name, length)
+        return self._charge(
+            printer, running.task_id, running.name, length, running.shares
+        )
 
     def _charge(
-        self, printer: Printer, job_id: int, job_name: str | None, length: float
+        self,
+        printer: Printer,
+        job_id: int,
+        job_name: str | None,
+        length: float,
+        shares: dict[int, float] | None = None,
     ) -> bool:
         entry = self._printer(printer.printer_id)
         # 1. Double-charge protection; the id is stored whatever happens next.
@@ -336,48 +347,65 @@ class FilamentLedger:
         if slot_index is None or slot_index < 0:
             feeding = entry.get("feeding_slot")
             slot_index = feeding if isinstance(feeding, int) and feeding >= 0 else None
-        # 3. LAN jobs carry no per-colour breakdown, so the whole job goes to
-        #    the feeding slot; without one it cannot be attributed.
         entry.pop("feeding_slot", None)
-        if slot_index is None:
+        # 3. Several colours: each colour index is taken as the slot (§3.5,
+        #    V2). One or none: all of it to the feeding slot - the slicer's
+        #    index is not a slot number; without one it cannot be attributed.
+        split: dict[int, float]
+        if shares and len(shares) > 1:
+            split = {index: share for index, share in shares.items() if 0 <= index < 4}
+        elif slot_index is not None:
+            split = {slot_index: 1.0}
+        else:
             _LOGGER.debug("Job %s ended with no known feeding slot", job_id)
             return True
-        slot_report = printer.ace_slot(0, slot_index + 1)
-        material = slot_report.material if slot_report is not None else None
-        grams = grams_from_length(length, material)
-        # 4-5. Book the grams on the slot.
-        slot = self._slot(printer.printer_id, slot_index)
-        slot["filament_used_g"] = round(_float(slot.get("filament_used_g")) + grams, 2)
-        # 6. Totals, cost, nozzle wear, history.
         totals = _dict(entry, "totals")
         materials = _dict(totals, "material_totals")
-        if material:
-            materials[material] = round(_float(materials.get(material)) + grams, 2)
-        job_cost = cost(grams, _float(slot.get("spool_price_per_kg")))
-        totals["last_job_grams"] = round(grams, 1)
+        nozzle = _dict(entry, "nozzle")
+        job_grams = 0.0
+        job_cost_sum = 0.0
+        priced = False
+        for index, share in split.items():
+            slot_report = printer.ace_slot(0, index + 1)
+            material = slot_report.material if slot_report is not None else None
+            grams = grams_from_length(length * share, material)
+            # 4-5. Book the grams on the slot.
+            slot = self._slot(printer.printer_id, index)
+            slot["filament_used_g"] = round(
+                _float(slot.get("filament_used_g")) + grams, 2
+            )
+            # 6. Totals, cost and nozzle wear per slot.
+            if material:
+                materials[material] = round(_float(materials.get(material)) + grams, 2)
+            slot_cost = cost(grams, _float(slot.get("spool_price_per_kg")))
+            if slot_cost is not None:
+                priced = True
+                job_cost_sum += slot_cost
+            nozzle["nozzle_total_g"] = round(
+                _float(nozzle.get("nozzle_total_g")) + grams, 2
+            )
+            abrasive = _float(nozzle.get("nozzle_abrasive_g"))
+            if is_abrasive(material):
+                abrasive += grams
+            nozzle["nozzle_abrasive_g"] = round(abrasive, 2)
+            job_grams += grams
+            _LOGGER.debug(
+                "Charged job %s: %.1f g of %s to slot %s",
+                job_id,
+                grams,
+                material,
+                index,
+            )
+        job_cost = round(job_cost_sum, 2) if priced else None
+        totals["last_job_grams"] = round(job_grams, 1)
         totals["last_job_cost"] = job_cost
         totals["cost_total"] = round(
             _float(totals.get("cost_total")) + (job_cost or 0.0), 2
         )
-        nozzle = _dict(entry, "nozzle")
-        nozzle["nozzle_total_g"] = round(
-            _float(nozzle.get("nozzle_total_g")) + grams, 2
-        )
-        abrasive = _float(nozzle.get("nozzle_abrasive_g"))
-        if is_abrasive(material):
-            abrasive += grams
-        nozzle["nozzle_abrasive_g"] = round(abrasive, 2)
         if (key := history_key(job_name)) is not None:
             samples = [s for s in self._jobs.get(key, []) if isinstance(s, int | float)]
-            samples.append(round(grams, 1))
+            samples.append(round(job_grams, 1))
             self._jobs[key] = samples[-JOB_HISTORY_SAMPLES:]
-        _LOGGER.debug(
-            "Charged job %s: %.1f g of %s to slot %s",
-            job_id,
-            grams,
-            material,
-            slot_index,
-        )
         return True
 
     # -- per-slot readings (BEHAVIOUR §2.8, §3.4) ----------------------------

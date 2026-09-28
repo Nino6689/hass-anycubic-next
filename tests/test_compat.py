@@ -176,8 +176,12 @@ async def test_ace_devices_link_without_deprecated_calls(
         assert ace.via_device_id == device.id
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
-    assert "Detected that custom integration 'anycubic_cloud'" not in caplog.text
-    assert "deprecated" not in caplog.text
+    # asyncio's slow-callback warning quotes this test's own name; skip it.
+    text = "\n".join(
+        record.getMessage() for record in caplog.records if record.name != "asyncio"
+    )
+    assert "Detected that custom integration 'anycubic_cloud'" not in text
+    assert "deprecated" not in text
 
 
 async def test_existing_registry_entries_are_reused(
@@ -306,33 +310,39 @@ async def test_hybrid_2x_cloud_entry_runs_on_lan(
     assert entity_id is not None
 
 
-async def test_2x_cloud_entry_waits_without_touching_data(
+async def test_2x_cloud_entry_waits_without_credentials(
     hass: HomeAssistant, printer: MockPrinter
 ) -> None:
-    """Without LAN Mode a cloud entry is not ready, explained, and unchanged."""
+    """Without Anycubic's app credentials a cloud entry is not ready, explained
+    by a repair, and unchanged (CLOUD.md §1); the LAN beta's issue is gone."""
     entry = cloud_entry(lan=False)
+    entry.add_to_hass(hass)
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        f"cloud_not_supported_yet_{entry.entry_id}",
+        is_fixable=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="cloud_not_supported_yet",
+    )
     data, options = copy.deepcopy(dict(entry.data)), copy.deepcopy(dict(entry.options))
-    await setup_entry(hass, entry)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
     assert entry.state is ConfigEntryState.SETUP_RETRY
     assert entry.reason is not None
-    assert "cloud" in entry.reason
+    assert "credentials" in entry.reason
     assert dict(entry.data) == data
     assert dict(entry.options) == options
-    issue = ir.async_get(hass).async_get_issue(
-        DOMAIN, f"cloud_not_supported_yet_{entry.entry_id}"
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, "cloud_credentials_unavailable")
+    assert (
+        issues.async_get_issue(DOMAIN, f"cloud_not_supported_yet_{entry.entry_id}")
+        is None
     )
-    assert issue is not None
-    assert issue.translation_placeholders == {"name": entry.title}
     assert printer.handshakes == 0
 
     await hass.config_entries.async_remove(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
-    assert (
-        ir.async_get(hass).async_get_issue(
-            DOMAIN, f"cloud_not_supported_yet_{entry.entry_id}"
-        )
-        is None
-    )
 
 
 async def test_lan_only_entry_with_lan_switched_off(

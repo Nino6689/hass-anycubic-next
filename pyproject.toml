@@ -1,11 +1,15 @@
 [project]
 name = "hass-anycubic-next"
-version = "3.0.0.dev0"
+version = "3.0.0.dev1"
 description = "Anycubic Cloud & LAN - Home Assistant custom integration (anycubic_cloud 3.0)"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.13"
-dependencies = ["anycubic-lan==0.1.0"]
+dependencies = [
+    "anycubic-cloud-api>=0.4.31,<0.5",
+    "anycubic-cloud-client==0.1.0",
+    "anycubic-lan==0.1.0",
+]
 
 [project.optional-dependencies]
 test = [
@@ -50,7 +54,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S105", "S106", "PLC0415", "PLR2004"]
+"tests/**" = ["S101", "S105", "S106", "PLC0415", "PLR2004", "PLR0917"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["custom_components"]

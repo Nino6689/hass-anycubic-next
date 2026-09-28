@@ -114,7 +114,7 @@ async def test_reports_before_info_are_held(
     await hass.async_block_till_done(wait_background_tasks=True)
     # The new connection sends a fan report first, then nothing: no info.
     printer.connect_payloads = [payloads.envelope("fan", {"fan_speed_pct": 10})]
-    await entry.runtime_data.async_refresh()
+    await entry.runtime_data.primary.async_refresh()
     await hass.async_block_till_done(wait_background_tasks=True)
     assert hass.states.get(NOZZLE).state == STATE_UNAVAILABLE
     assert printer.client.disconnected
@@ -291,7 +291,7 @@ async def test_push_task_ends_on_unload(
     monkeypatch.setattr(
         "custom_components.anycubic_cloud.coordinator.PUSH_COOLDOWN", 3600
     )
-    coordinator = entry.runtime_data
+    coordinator = entry.runtime_data.primary
     # A tracked push task would hold up each wait below for the hour.
     async with asyncio.timeout(5):
         printer.client.feed(payloads.info())
@@ -319,7 +319,7 @@ async def test_push_task_ends_when_home_assistant_stops(
     monkeypatch.setattr(
         "custom_components.anycubic_cloud.coordinator.PUSH_COOLDOWN", 3600
     )
-    coordinator = entry.runtime_data
+    coordinator = entry.runtime_data.primary
     async with asyncio.timeout(5):
         printer.client.feed(payloads.info())
         await hass.async_block_till_done()

@@ -1,10 +1,10 @@
 """Buttons (BEHAVIOUR §2.12).
 
-Cloud-only buttons are not created on LAN (ones a 2.x install registered stay
-in the registry, never removed: DECISIONS round 2, Q8), except the three
-``request_file_list_<source>`` buttons: they always exist and are unavailable
-while their list cannot be fetched over the entry's current connection, which
-the frontend uses as its signal (DECISIONS round 2, F3).
+Cloud-only buttons are not created on LAN-only entries (ones a 2.x install
+registered stay in the registry, never removed: DECISIONS round 2, Q8),
+except the three ``request_file_list_<source>`` buttons: they always exist and
+are unavailable while their list cannot be fetched over the printer's current
+connection, which the frontend uses as its signal (DECISIONS round 2, F3).
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.const import EntityCategory
-from homeassistant.exceptions import ServiceValidationError
 
 from . import control
 from .const import (
@@ -25,7 +24,6 @@ from .const import (
     AXIS_XY,
     AXIS_Y,
     AXIS_Z,
-    DOMAIN,
     DRYING_PRESETS,
     MOVE_HOME,
     MOVE_MINUS,
@@ -67,16 +65,12 @@ def _file_list_fetchable(source: str) -> Callable[[AnycubicCoordinator], bool]:
 def _request_file_list(
     source: str,
 ) -> Callable[[AnycubicCoordinator], Awaitable[None]]:
-    async def press(c: AnycubicCoordinator) -> None:
-        # Only reached when called while unavailable; no transport can fetch
-        # a list yet, so there is nothing to send.
-        raise ServiceValidationError(
-            translation_domain=DOMAIN,
-            translation_key="file_list_unavailable",
-            translation_placeholders={"source": source},
-        )
+    return lambda c: control.async_request_file_list(c, source)
 
-    return press
+
+async def _refresh_mqtt(c: AnycubicCoordinator) -> None:
+    if (cloud := c.runtime.cloud) is not None:
+        await cloud.mqtt.async_refresh()
 
 
 async def _reset_nozzle(c: AnycubicCoordinator) -> None:
@@ -217,6 +211,12 @@ BUTTONS: tuple[AnycubicButtonDescription, ...] = (
     ),
     *_ace_buttons(0),
     *_ace_buttons(1),
+    AnycubicButtonDescription(
+        key="refresh_mqtt_connection",
+        cloud_only=True,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        press_fn=_refresh_mqtt,
+    ),
 )
 
 

@@ -22,8 +22,10 @@ import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.anycubic_cloud.const import DOMAIN
+from custom_components.anycubic_cloud.credentials import CredentialsUnavailableError
 
-from . import payloads
+from . import cloud_payloads as cp, payloads
+from .cloud_fakes import FakeClient, FakeCloud, FakeLink, fake_secrets
 
 pytest_plugins = "pytest_homeassistant_custom_component"
 
@@ -202,6 +204,55 @@ class MockPrinter:
 
 
 @pytest.fixture(autouse=True)
+def no_cloud_credentials() -> Generator[None]:
+    """By default the Anycubic app credentials are not installed (CLOUD.md §1):
+    CI never needs the real package. Cloud tests use the ``cloud`` fixture."""
+    with patch(
+        "custom_components.anycubic_cloud.credentials.load_cloud_secrets",
+        side_effect=CredentialsUnavailableError("anycubic_cloud_api is not installed"),
+    ):
+        yield
+
+
+@pytest.fixture
+def cloud(monkeypatch: pytest.MonkeyPatch) -> Generator[FakeCloud]:
+    """A fake Anycubic account behind anycubic-cloud-client's public API."""
+    fake = FakeCloud()
+    for name in (
+        "CLOUD_SETUP_RETRY_DELAY",
+        "MQTT_WAKE_SETTLE",
+        "MQTT_REFRESH_PAUSE",
+    ):
+        monkeypatch.setattr(f"custom_components.anycubic_cloud.cloud.{name}", 0)
+    for name, value in (
+        ("FILE_LIST_RETRY_DELAY", 0),
+        ("FILE_LIST_RETRY_SETTLE", 0),
+        ("DELETE_RELIST_DELAYS", (0, 0)),
+        ("CLOUD_DELETE_RELIST_DELAY", 0),
+    ):
+        monkeypatch.setattr(f"custom_components.anycubic_cloud.control.{name}", value)
+    with (
+        patch(
+            "custom_components.anycubic_cloud.credentials.load_cloud_secrets",
+            return_value=fake_secrets(),
+        ),
+        patch(
+            "custom_components.anycubic_cloud.cloud.AnycubicCloudClient",
+            FakeClient.factory(fake),
+        ),
+        patch(
+            "custom_components.anycubic_cloud.config_flow.AnycubicCloudClient",
+            FakeClient.factory(fake),
+        ),
+        patch(
+            "custom_components.anycubic_cloud.cloud.CloudMqttClient",
+            side_effect=FakeLink.factory(fake),
+        ),
+    ):
+        yield fake
+
+
+@pytest.fixture(autouse=True)
 def no_push_cooldown(monkeypatch: pytest.MonkeyPatch) -> None:
     """Pushed reports reach entities within the test's event loop turn."""
     monkeypatch.setattr("custom_components.anycubic_cloud.coordinator.PUSH_COOLDOWN", 0)
@@ -273,6 +324,32 @@ def cloud_entry(*, lan: bool, **overrides: Any) -> MockConfigEntry:
             "user_device_id": None,
             "region": "international",
             "printer_ids": [CLOUD_PRINTER_ID],
+        },
+        "options": options,
+    }
+    params.update(overrides)
+    return MockConfigEntry(**params)
+
+
+def account_entry(
+    *, lan: bool = False, mode: int = 3, token: str | None = None, **overrides: Any
+) -> MockConfigEntry:
+    """A cloud entry of the fake account, slicer mode by default."""
+    options: dict[str, Any] = {"mqtt_connect_mode": 1}
+    if lan:
+        options |= {"lan_mode_enabled": True, "lan_host": payloads.HOST}
+    params: dict[str, Any] = {
+        "domain": DOMAIN,
+        "version": 1,
+        "minor_version": 1,
+        "unique_id": str(cp.USER_ID),
+        "title": cp.EMAIL,
+        "data": {
+            "user_token": token or cp.slicer_token(),
+            "user_auth_mode": mode,
+            "user_device_id": None,
+            "region": "international",
+            "printer_ids": [cp.PRINTER_ID],
         },
         "options": options,
     }

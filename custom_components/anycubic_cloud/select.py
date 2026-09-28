@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.exceptions import ServiceValidationError
 
+from . import control
 from .const import AXIS_STEPS, DOMAIN
 from .entity import (
     AnycubicEntity,
@@ -71,7 +72,8 @@ class SpeedModeSelect(AnycubicEntity, SelectEntity):
     """Print speed mode, named from the cloud's list (BEHAVIOUR §1.5).
 
     LAN has no list of mode names, so on a LAN connection this entity is
-    always unavailable.
+    always unavailable. Over the cloud the list survives the job, so it is
+    available while idle but refuses a change.
     """
 
     entity_description: AnycubicSelectDescription
@@ -88,9 +90,13 @@ class SpeedModeSelect(AnycubicEntity, SelectEntity):
     def current_option(self) -> str | None:
         return self.printer.job_speed_mode
 
-    async def async_select_option(
-        self, option: str
-    ) -> None:  # pragma: no cover - unavailable without a mode list
+    async def async_select_option(self, option: str) -> None:
+        """Send the code paired with the name (order 6); refused unless a
+        job is in progress (BEHAVIOUR §2.14)."""
+        for mode in self.printer.speed_modes:
+            if str(mode["description"]) == option:
+                await control.async_set_speed_mode(self.coordinator, int(mode["mode"]))
+                return
         raise ServiceValidationError(
             translation_domain=DOMAIN, translation_key="speed_mode_unavailable"
         )
