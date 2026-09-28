@@ -8,11 +8,11 @@ the directory it points at.
 ```python
 import anycubic_cloud_frontend as fe
 
-fe.locate_dir()        # directory to serve at /anycubic-cloud-panel-static
-fe.entrypoint_js()     # "entrypoint.<hash>.js" — the panel module
-fe.webcomponent_name() # "anycubic-cloud-panel"
-fe.card_js()           # "anycubic-card.js" (stable name)
-fe.card_hash()         # content hash for "anycubic-card.js?v=<hash>"
+fe.locate_dir()  # directory to serve at /anycubic-cloud-panel-static
+fe.entrypoint_js()  # "entrypoint.<hash>.js" — the panel module
+fe.webcomponent_name()  # "anycubic-cloud-panel"
+fe.card_js()  # "anycubic-card.js" (stable name)
+fe.card_hash()  # content hash for "anycubic-card.js?v=<hash>"
 ```
 
 Build it from `frontend/` with `npm ci && npm run build`, then build the wheel
