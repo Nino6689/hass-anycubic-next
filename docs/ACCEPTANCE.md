@@ -125,3 +125,5 @@ The full run was repeated: the upgrade test over the 2.x snapshot, the hardware 
 | # | Observed | Expected |
 |---|---|---|
 | M1 | The Tests workflow's `ruff check .` now also covers `frontend/python/tests/test_package.py`, and fails there with 12 errors: I001 (import order) and PT009 (unittest-style `assertEqual`/`assertTrue`). Mypy, both pytest jobs and the Frontend workflow pass. | `main` is green. Bring `frontend/python/tests` in line with the repository's ruff rules. Don't exclude it. |
+
+M1: **Fixed in dee3e61.**
