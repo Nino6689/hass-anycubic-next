@@ -10,7 +10,17 @@ setup changes.
   the same clean libraries as the Home Assistant core integration.
 - **How:** written from specifications in [`docs/`](docs/) by a separate
   implementation team, under the rules in [`docs/CLEAN-ROOM.md`](docs/CLEAN-ROOM.md).
-- **Status:** specification phase. Until 3.0 is released, 2.x stays fully
-  maintained.
+- **Status:** implementation. Phase B (the LAN half: printers in LAN Mode)
+  is in `custom_components/anycubic_cloud/`; the cloud half follows. Until
+  3.0 is released, 2.x stays fully maintained.
+
+## Development
+
+```sh
+pip install -r requirements_test.txt
+ruff check . && ruff format --check .
+mypy
+pytest
+```
 
 MIT licence.
