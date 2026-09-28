@@ -232,7 +232,7 @@ def user_info() -> dict[str, Any]:
     return {"id": USER_ID, "user_email": EMAIL, "mobile": "", "birthday": "1990-01-01"}
 
 
-def mqtt(  # noqa: PLR0917 - the envelope, in wire order
+def mqtt(
     kind: str,
     action: str,
     state: str,

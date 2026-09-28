@@ -224,6 +224,13 @@ def cloud(monkeypatch: pytest.MonkeyPatch) -> Generator[FakeCloud]:
         "MQTT_REFRESH_PAUSE",
     ):
         monkeypatch.setattr(f"custom_components.anycubic_cloud.cloud.{name}", 0)
+    for name, value in (
+        ("FILE_LIST_RETRY_DELAY", 0),
+        ("FILE_LIST_RETRY_SETTLE", 0),
+        ("DELETE_RELIST_DELAYS", (0, 0)),
+        ("CLOUD_DELETE_RELIST_DELAY", 0),
+    ):
+        monkeypatch.setattr(f"custom_components.anycubic_cloud.control.{name}", value)
     with (
         patch(
             "custom_components.anycubic_cloud.credentials.load_cloud_secrets",

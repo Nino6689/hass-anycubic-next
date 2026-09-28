@@ -338,6 +338,7 @@ def sign_in_result(cloud: FakeCloud, token: str, mode: AuthMode) -> SignInResult
     )
     account = Account.from_data(cloud.user)
     client.account = account
+    client.user_token = "derived-user-token"
     return SignInResult(
         auth_mode=mode,
         account=account,
