@@ -297,7 +297,7 @@ async def test_drying_uses_stored_settings_and_the_dried_ace(
             {"entity_id": f"number.{A}_drying_{key}", "value": value},
             blocking=True,
         )
-    assert hass.states.get(f"number.{A}_drying_temperature").state == "60"
+    assert hass.states.get(f"number.{A}_drying_temperature").state == "60.0"
     await _press(hass, f"button.{A}_2_secondary_drying_start")
     assert _last(printer)[2]["multi_color_box"][0]["drying_status"] == {
         "status": 1,

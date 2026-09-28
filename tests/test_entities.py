@@ -119,6 +119,42 @@ async def test_idle_printer(hass: HomeAssistant, loaded: MockConfigEntry) -> Non
     )
 
 
+async def test_number_states_are_floats(
+    hass: HomeAssistant, printer: MockPrinter
+) -> None:
+    """Every number reads ``45.0``, never ``45`` (COMPAT §3, U2)."""
+    from custom_components.anycubic_cloud.number import NUMBERS
+
+    entry = lan_entry()
+    entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    for description in NUMBERS:  # the disabled-by-default ones too
+        registry.async_get_or_create(
+            "number",
+            DOMAIN,
+            f"{payloads.MAC_UID}-{description.key}",
+            config_entry=entry,
+            suggested_object_id=description.key,
+        )
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done(wait_background_tasks=True)
+    states = hass.states.async_all("number")
+    assert len(states) == len(NUMBERS)
+    for state in states:
+        assert state.state not in (STATE_UNAVAILABLE, STATE_UNKNOWN), state
+        assert state.state == str(float(state.state)), state
+    values = {
+        entity.unique_id.removeprefix(f"{payloads.MAC_UID}-"): _get(
+            hass, entity.entity_id
+        ).state
+        for entity in er.async_entries_for_config_entry(registry, entry.entry_id)
+        if entity.domain == "number"
+    }
+    assert values["set_fan_speed_pct"] == "55.0"
+    assert values["drying_set_duration"] == "360.0"
+    assert values["ace_slot_1_spool_weight"] == "1000.0"
+
+
 async def test_running_job(
     hass: HomeAssistant,
     loaded: MockConfigEntry,
@@ -391,7 +427,7 @@ async def test_ace_readings(
     assert _get(hass, f"switch.{A}_ace_run_out_refill").state == "on"
     assert _get(hass, "sensor.ace_slot_1_filament_remaining").state == "1000.0"
     # Material default for drying comes from the loaded slot.
-    assert _get(hass, f"number.{A}_drying_temperature").state == "45"
+    assert _get(hass, f"number.{A}_drying_temperature").state == "45.0"
 
 
 async def test_second_ace(hass: HomeAssistant, printer: MockPrinter) -> None:

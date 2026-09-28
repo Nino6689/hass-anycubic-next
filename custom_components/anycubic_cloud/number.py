@@ -228,7 +228,10 @@ class AnycubicNumber(AnycubicEntity, NumberEntity):
 
     @property
     def native_value(self) -> float | None:
-        return self.entity_description.value_fn(self.coordinator)
+        # Always a float: the state reads ``45.0``, never ``45`` (COMPAT §3
+        # "State formats"), whatever type the printer or ledger holds.
+        value = self.entity_description.value_fn(self.coordinator)
+        return None if value is None else float(value)
 
     @property
     def native_unit_of_measurement(self) -> str | None:

@@ -234,8 +234,8 @@ async def test_2x_ledger_loads_and_keeps_working(
     assert _state(hass, "sensor.anycubic_kobra_s1_nozzle_abrasive_filament") == "250.0"
     assert _state(hass, "sensor.anycubic_kobra_s1_nozzle_wear") == "25.0"
     assert _state(hass, "select.anycubic_kobra_s1_axis_step_size") == "15 mm"
-    assert _state(hass, "number.anycubic_kobra_s1_ace_pro_drying_temperature") == "50"
-    assert _state(hass, "number.anycubic_kobra_s1_ace_pro_drying_duration") == "300"
+    assert _state(hass, "number.anycubic_kobra_s1_ace_pro_drying_temperature") == "50.0"
+    assert _state(hass, "number.anycubic_kobra_s1_ace_pro_drying_duration") == "300.0"
 
     # A second report banks each slot under its signature (BEHAVIOUR §3.3).
     printer.client.feed(payloads.ace(payloads.box(0)))
