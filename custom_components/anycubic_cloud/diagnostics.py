@@ -56,6 +56,7 @@ TO_REDACT = {
     "usn",
     "serial",
     "sn",
+    "description",  # the cloud record's printer serial (PROTOCOL B §2.3.2)
     "fileUploadurl",
     "fileuploadurl",
     "file_upload_url",
@@ -179,7 +180,15 @@ def _account(runtime: AnycubicRuntime) -> dict[str, Any] | None:
     return {
         "region": account.region.value,
         "auth_mode": int(client.auth_mode) if client is not None else None,
-        "account": _plain(account.account.raw) if account.account else None,
+        # The account's "id" is its user id: shown under a redacted key.
+        "account": (
+            {
+                ("user_id" if key == "id" else key): value
+                for key, value in _plain(account.account.raw).items()
+            }
+            if account.account
+            else None
+        ),
         "last_poll_ok": account.last_poll_ok,
         "mqtt": {
             "mode": mqtt.mode,

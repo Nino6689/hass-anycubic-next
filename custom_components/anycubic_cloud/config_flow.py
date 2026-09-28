@@ -689,14 +689,20 @@ class AnycubicOptionsFlow(OptionsFlowWithReload):
         return self.async_create_entry(data=options)
 
     def _has_no_ace(self) -> bool:
-        """True only when every running printer is known to have no ACE (G21)."""
+        """True only when every running printer is known to have no ACE:
+        its cloud record lists no ACE function, or it said so over LAN (G21)."""
         runtime = getattr(self.config_entry, "runtime_data", None)
         coordinators = list(runtime.coordinators.values()) if runtime else []
         printers = [c.printer for c in coordinators if c.has_printer]
         if not printers:
             return False
         return all(
-            not p.supports_ace and p.peripherals.get("ace") is False for p in printers
+            not p.supports_ace
+            and (
+                p.peripherals.get("ace") is False
+                or (p.cloud is not None and p.cloud.detail is not None)
+            )
+            for p in printers
         )
 
     async def async_step_options_menu(

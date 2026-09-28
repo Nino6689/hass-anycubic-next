@@ -671,6 +671,25 @@ class Printer:
         return cloud.job if cloud.job.id == self.job_task_id else None
 
     @property
+    def job_paint_shares(self) -> dict[int, float]:
+        """The cloud job's split between colours (BEHAVIOUR §3.5 step 3).
+
+        ``filament_used`` summed per ``paint_index`` from the slice data,
+        non-positive entries ignored, as shares summing to 1. LAN jobs carry
+        no breakdown.
+        """
+        job = self.cloud_job
+        infos = job.slice_param.paint_infos if job and job.slice_param else ()
+        grams: dict[int, float] = {}
+        for info in infos:
+            used = info.filament_used
+            if used is None or used <= 0 or info.paint_index < 0:
+                continue
+            grams[info.paint_index] = grams.get(info.paint_index, 0.0) + float(used)
+        total = sum(grams.values())
+        return {index: value / total for index, value in grams.items()} if total else {}
+
+    @property
     def job_image_url(self) -> str | None:
         job = self.cloud_job
         return job.image_url if job is not None else None

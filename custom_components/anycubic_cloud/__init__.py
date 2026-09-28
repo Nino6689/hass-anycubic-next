@@ -27,6 +27,7 @@ from homeassistant.helpers import (
     device_registry as dr,
     issue_registry as ir,
 )
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.typing import ConfigType
 
 from .cloud import ISSUE_TOKEN_EXPIRING, CloudAccount
@@ -102,6 +103,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: AnycubicConfigEntry) -> 
     entry.async_on_unload(
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP, _on_stop)
     )
+
+    async def _on_started(_hass: HomeAssistant) -> None:
+        # Nothing is started while Home Assistant starts (§5.2): check now.
+        if runtime.cloud is not None:
+            await runtime.cloud.mqtt.async_check()
+
+    entry.async_on_unload(async_at_started(hass, _on_started))
     for coordinator in list(runtime.coordinators.values()):
         await coordinator.async_config_entry_first_refresh()
         async_register_printer_device(coordinator)
