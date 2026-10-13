@@ -232,3 +232,19 @@ if 3.0 already behaves as expected, add a test that shows it and say so under th
 - Expected: over LAN, job state reads `finished` (or `cancelled`) after a job ends, until the next job starts, matching the cloud. `idle` is for a printer that hasn't run a job since setup.
 
 **Fixed in hass-anycubic-next@18f855d.** Tests `test_beta2.py::test_d8_*`. A cancelled LAN job reads `cancelled` as stated here; the cloud's status 3 still reads `failed` (BEHAVIOUR §1.3), unchanged.
+
+### Beta 2 acceptance — 2026-10-13, `clean/beta2` @ `60e7101` with `anycubic-lan` @ `bd516c7` and `anycubic-cloud-client` @ `4cdc23d`
+
+**Method.** The upgrade test over a fresh snapshot of the live install (now 3.0.0b1), against the real Kobra S1 on the cloud (LAN Mode off),
+with `--actuate`. Similarity against the excluded trees for all three PRs, and the secret scan.
+
+- The entry loads. Its data, options and version are untouched. All 132 unique ids re-attach, with no id changes and no new entities. Devices are kept.
+- **128 of 129 compared entities match live exactly in value and unit.** The one difference is `job_preview`'s timestamp (the same image, fetched later).
+- The filament ledger is identical. The light (off/on) and the part fan (20 %, then 0) are reported back over the cloud. There are no warnings from the integration.
+- Similarity is unchanged from the last checks: integration 40/12/7 (the data tables and import blocks), cloud client 25/23 (Agora join fields and function-id
+  names, as before), `anycubic-lan` 6. The secret scan found 0 hits in 148 files.
+- **Not verifiable on the development machine:** D3 for a second unit (one ACE here), D4's numbering (no Kobra X), D7 (no Kobra 4),
+  and D1/D2 against the ACE itself (not started a real dry cycle). These rest on their tests until users confirm them.
+
+**Result: Beta 2 accepted.** The libraries were released as `anycubic-lan` 0.1.1 and `anycubic-cloud-client` 0.1.1, and are pinned here.
+
