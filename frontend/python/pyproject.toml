@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anycubic-cloud-frontend"
-version = "1.0.0.dev0"
+version = "1.0.0b2"
 description = "Built sidebar panel and dashboard card for the anycubic_cloud Home Assistant integration"
 readme = "README.md"
 license = "MIT"
