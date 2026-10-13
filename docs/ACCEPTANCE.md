@@ -173,3 +173,46 @@ X2: **Fixed in 4058653.**
 - Similarity is unchanged (the data tables and import blocks). The secret scan found no hits in 63 files.
 
 **Result: Phase E2 (cloud half) accepted. `anycubic_cloud` 3.0 works over the cloud and over LAN.**
+
+## Beta 2 — field reports from 2.x users, 2026-10-13 (D1–D8)
+
+**Source.** Reports from users on other printers (Kobra X, Kobra 4, Kobra S1 with two ACE Pro units), confirmed where possible on the
+development S1. They are stated as what the printer sends and what a user should see. Each one is an acceptance check for 3.0.0-beta.2:
+if 3.0 already behaves as expected, add a test that shows it and say so under the item.
+
+### D1. ACE Pro drying limit
+- An ACE with `model_id` **40001** (ACE Pro) refuses a dry cycle above **55 °C**, with code **11505** ("The drying request did not enter the target temperature"). Seen on a user's two units; the development S1's ACE Pro reports 40001 too.
+- Expected: a drying start on a 40001 unit never asks for more than 55 °C. This covers a material default (e.g. PETG at 65 °C), a value the user set and a preset. The number entity's state reflects the cap. Other model ids are sent what was asked.
+
+### D2. A refused drying start is visible
+- On refusal the printer answers the `setDry` order with a non-success reply carrying a fault code (11505 in the case above), either on the envelope or inside `data`.
+- Expected: a WARNING log line naming the code and its description, and the code reaches the last-error sensors. The button must not look as if it worked.
+
+### D3. Second ACE after restart
+- After an HA restart, the second ACE's entities on an S1 with 2× ACE Pro stayed unavailable until "Refresh ACE Spools" was pressed.
+- Expected: once a push connection (cloud MQTT or LAN) is up, the integration sends the same box-report request as that button, once per connection. It does not open a connection just to send it.
+
+### D4. Active channel on the Kobra X
+- A Kobra X (machine type 20030) reports filament changes as `print` / `update` / `updated` messages whose data is just `{"channel_no": N, "settings": {"light": 0}}`. It stops updating the ACE's own `loaded_slot` after the first few changes of a print.
+- `channel_no` counts from **1** across every box in order. Observed values were 3 and 4 on a 4-slot Kobra X. The base is inferred and has not yet been confirmed against the printer's screen.
+- Expected: the loaded-slot sensor follows `channel_no`.
+
+### D5. Progress-only print updates
+- The Kobra X sends `print` / `update` / `updated` with `curr_layer, file_root_path, filename, filetype, print_time, progress, remain_time, settings.light, supplies_usage, total_layers` and **no task id**.
+- The S1 adds `display_filename, origin3mf, source_info, temp_gcode`.
+- Expected: progress fields apply to the current job, and none of these fields produce a warning-level log line.
+
+### D6. LAN print speed presets
+- Over LAN the printer sends no speed-preset list, so the speed select was unavailable through every LAN print. The printer accepts the change locally.
+- Codes observed on S1 and Kobra 4: 1 Silent, 2 Standard, 3 Sport.
+- Expected: when no list is reported, the select offers those three, and a list the printer does send wins.
+
+### D7. Kobra 4 camera
+- The Kobra 4 (machine type **20028**) FLV endpoint on port 18088 answers `206 Partial Content` like the Kobra X, so go2rtc refuses it.
+- Expected: same handling as the Kobra X.
+
+
+### D8. A finished LAN job reads finished
+- Over LAN, when a print ends the printer stops reporting the job (`project` goes null), and job state went straight to `idle`. Over the cloud it reads `finished` until the next job, because the account keeps the last job.
+- The printer's info report still carries the ended job in `last_project`, with `state` (`finished`, or `stoped` for a cancelled one), `task_id` and `filename`.
+- Expected: over LAN, job state reads `finished` (or `cancelled`) after a job ends, until the next job starts, matching the cloud. `idle` is for a printer that hasn't run a job since setup.
