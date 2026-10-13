@@ -25,7 +25,7 @@ class PackageTest(unittest.TestCase):
 
     def test_names(self) -> None:
         assert fe.webcomponent_name() == "anycubic-cloud-panel"
-        assert fe.__version__ == "1.0.0.dev0"
+        assert fe.__version__ == "1.0.0b2"
         info = json.loads((Path(fe.locate_dir()) / "build.json").read_text())
         assert info["entrypoint"] == fe.entrypoint_js()
         assert info["webcomponent"] == fe.WEBCOMPONENT_NAME

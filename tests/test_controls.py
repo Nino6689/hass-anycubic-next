@@ -271,7 +271,8 @@ async def test_ace_buttons(
 async def test_drying_uses_stored_settings_and_the_dried_ace(
     hass: HomeAssistant, loaded: MockConfigEntry, printer: MockPrinter
 ) -> None:
-    """B11: the second ACE dries by its own material."""
+    """B11: the second ACE dries by its own material: PETG's 65 °C, capped
+    at the ACE Pro's 55 °C (Beta 2, D1), not the first ACE's PLA 45 °C."""
     second = payloads.box(1, loaded_slot=0, slots=[payloads.slot(0, type="PETG")])
     printer.client.feed(payloads.ace(payloads.box(0), second))
     await hass.async_block_till_done(wait_background_tasks=True)
@@ -280,7 +281,7 @@ async def test_drying_uses_stored_settings_and_the_dried_ace(
         "id": 1,
         "drying_status": {
             "status": 1,
-            "target_temp": 65,
+            "target_temp": 55,
             "duration": 360,
             "remain_time": None,
         },
@@ -297,11 +298,12 @@ async def test_drying_uses_stored_settings_and_the_dried_ace(
             {"entity_id": f"number.{A}_drying_{key}", "value": value},
             blocking=True,
         )
-    assert hass.states.get(f"number.{A}_drying_temperature").state == "60.0"
+    # D1: the stored 60 °C reads, and is sent, as the ACE Pro's 55 °C.
+    assert hass.states.get(f"number.{A}_drying_temperature").state == "55.0"
     await _press(hass, f"button.{A}_2_secondary_drying_start")
     assert _last(printer)[2]["multi_color_box"][0]["drying_status"] == {
         "status": 1,
-        "target_temp": 60,
+        "target_temp": 55,
         "duration": 90,
         "remain_time": None,
     }

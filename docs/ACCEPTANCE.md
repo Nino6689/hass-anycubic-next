@@ -184,35 +184,51 @@ if 3.0 already behaves as expected, add a test that shows it and say so under th
 - An ACE with `model_id` **40001** (ACE Pro) refuses a dry cycle above **55 °C**, with code **11505** ("The drying request did not enter the target temperature"). Seen on a user's two units; the development S1's ACE Pro reports 40001 too.
 - Expected: a drying start on a 40001 unit never asks for more than 55 °C. This covers a material default (e.g. PETG at 65 °C), a value the user set and a preset. The number entity's state reflects the cap. Other model ids are sent what was asked.
 
+**Fixed in hass-anycubic-next@18f855d.** Tests `test_beta2.py::test_d1_*`.
+
 ### D2. A refused drying start is visible
 - On refusal the printer answers the `setDry` order with a non-success reply carrying a fault code (11505 in the case above), either on the envelope or inside `data`.
 - Expected: a WARNING log line naming the code and its description, and the code reaches the last-error sensors. The button must not look as if it worked.
 
+**Fixed in anycubic-lan@533233f, anycubic-cloud-client@b0dabff and hass-anycubic-next@18f855d.** Tests `test_beta2.py::test_d2_*`.
+
 ### D3. Second ACE after restart
 - After an HA restart, the second ACE's entities on an S1 with 2× ACE Pro stayed unavailable until "Refresh ACE Spools" was pressed.
 - Expected: once a push connection (cloud MQTT or LAN) is up, the integration sends the same box-report request as that button, once per connection. It does not open a connection just to send it.
+
+**Already holds over LAN — test `anycubic-lan` `test_client.py::test_box_report_requested_once_per_connection` (anycubic-lan@898ad70).** **Fixed over the cloud MQTT in hass-anycubic-next@18f855d.** Tests `test_beta2.py::test_d3_*`; `test_d3_never_opens_or_holds_the_cloud_link` shows the request neither opens nor holds the link.
 
 ### D4. Active channel on the Kobra X
 - A Kobra X (machine type 20030) reports filament changes as `print` / `update` / `updated` messages whose data is just `{"channel_no": N, "settings": {"light": 0}}`. It stops updating the ACE's own `loaded_slot` after the first few changes of a print.
 - `channel_no` counts from **1** across every box in order. Observed values were 3 and 4 on a 4-slot Kobra X. The base is inferred and has not yet been confirmed against the printer's screen.
 - Expected: the loaded-slot sensor follows `channel_no`.
 
+**Fixed in anycubic-lan@533233f, anycubic-cloud-client@b0dabff and hass-anycubic-next@18f855d.** The numbering is `model.ace_slot_for_channel`, marked as an assumption. Tests `test_beta2.py::test_d4_*`.
+
 ### D5. Progress-only print updates
 - The Kobra X sends `print` / `update` / `updated` with `curr_layer, file_root_path, filename, filetype, print_time, progress, remain_time, settings.light, supplies_usage, total_layers` and **no task id**.
 - The S1 adds `display_filename, origin3mf, source_info, temp_gcode`.
 - Expected: progress fields apply to the current job, and none of these fields produce a warning-level log line.
+
+**Fixed in anycubic-lan@533233f and anycubic-cloud-client@b0dabff** (no warning was logged before either). Tests `test_beta2.py::test_d5_*`.
 
 ### D6. LAN print speed presets
 - Over LAN the printer sends no speed-preset list, so the speed select was unavailable through every LAN print. The printer accepts the change locally.
 - Codes observed on S1 and Kobra 4: 1 Silent, 2 Standard, 3 Sport.
 - Expected: when no list is reported, the select offers those three, and a list the printer does send wins.
 
+**Fixed in hass-anycubic-next@18f855d.** Tests `test_beta2.py::test_d6_*`.
+
 ### D7. Kobra 4 camera
 - The Kobra 4 (machine type **20028**) FLV endpoint on port 18088 answers `206 Partial Content` like the Kobra X, so go2rtc refuses it.
 - Expected: same handling as the Kobra X.
+
+**Fixed in hass-anycubic-next@3b475f3.** Tests `test_camera.py::test_kobra_x_relay[20028]`, `test_beta2.py::test_d7_kobra_4_stream_is_relayed`.
 
 
 ### D8. A finished LAN job reads finished
 - Over LAN, when a print ends the printer stops reporting the job (`project` goes null), and job state went straight to `idle`. Over the cloud it reads `finished` until the next job, because the account keeps the last job.
 - The printer's info report still carries the ended job in `last_project`, with `state` (`finished`, or `stoped` for a cancelled one), `task_id` and `filename`.
 - Expected: over LAN, job state reads `finished` (or `cancelled`) after a job ends, until the next job starts, matching the cloud. `idle` is for a printer that hasn't run a job since setup.
+
+**Fixed in hass-anycubic-next@18f855d.** Tests `test_beta2.py::test_d8_*`. A cancelled LAN job reads `cancelled` as stated here; the cloud's status 3 still reads `failed` (BEHAVIOUR §1.3), unchanged.

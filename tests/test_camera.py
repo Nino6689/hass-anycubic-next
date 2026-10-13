@@ -67,14 +67,17 @@ async def test_still_comes_from_the_stream(
     assert entry.state.value == "loaded"
 
 
+@pytest.mark.parametrize("model_id", [20030, 20028])
 async def test_kobra_x_relay(
     hass: HomeAssistant,
     printer: MockPrinter,
     hass_client_no_auth: Any,
     aioclient_mock: AiohttpClientMocker,
+    model_id: int,
 ) -> None:
-    """B25: the Kobra X stream is relayed with status 200."""
-    printer.info = payloads.connection_info(model_id=20030)
+    """B25: the Kobra X stream is relayed with status 200; the Kobra 4
+    (20028) answers 206 too and is handled the same way (Beta 2, D7)."""
+    printer.info = payloads.connection_info(model_id=model_id)
     assert await async_setup_component(hass, "http", {})
     await setup_entry(hass, lan_entry())
     source = await async_get_stream_source(hass, CAMERA)

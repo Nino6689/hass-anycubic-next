@@ -32,7 +32,7 @@ always names the files it ships.
 
 ## The Python package (`python/`)
 
-`anycubic-cloud-frontend` `1.0.0.dev0` (not published). The integration uses:
+`anycubic-cloud-frontend` `1.0.0b2` (not published). The integration uses:
 
 ```python
 import anycubic_cloud_frontend as fe

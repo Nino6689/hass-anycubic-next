@@ -250,5 +250,13 @@ async def test_speed_mode_checks_in_order(
     )
     assert await refused() == "job_not_in_progress"
     printer.client.feed(payloads.info(project=payloads.job()))
-    # LAN lists no speed modes, so every code is refused.
+    # LAN lists no speed modes: its presets 1-3 are offered (Beta 2, D6), so
+    # another code is refused and a preset is sent as order 6's LAN form.
+    await _call(hass, "change_print_speed_mode", target | {"speed_mode": 3})
+    assert printer.client.commands[-1] == (
+        "print",
+        "update",
+        {"taskid": "614707220", "settings": {"print_speed_mode": 3}},
+    )
+    target["speed_mode"] = 9
     assert await refused() == "speed_mode_unavailable"
