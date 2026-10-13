@@ -105,7 +105,10 @@ async def test_idle_printer(hass: HomeAssistant, loaded: MockConfigEntry) -> Non
         is None
     )
     assert _get(hass, f"sensor.{P}_print_speed").state == STATE_UNAVAILABLE
-    assert _get(hass, f"select.{P}_print_speed_mode").state == STATE_UNAVAILABLE
+    # LAN reports no list of speed modes: the printer's presets (Beta 2, D6).
+    speed = _get(hass, f"select.{P}_print_speed_mode")
+    assert speed.state == "Standard"
+    assert speed.attributes["options"] == ["Silent", "Standard", "Sport"]
     # LAN knows the installed firmware only; the latest stays unknown (G10, U5).
     firmware = _get(hass, f"update.{P}_printer_firmware")
     assert firmware.state == STATE_UNKNOWN
