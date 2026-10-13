@@ -349,6 +349,9 @@ class Printer:
     print_speed_pct: int | None = None
     """From ``print`` reports' ``data.settings`` (PROTOCOL §7.2, round 2 Q2.2)."""
     remembered_light_types: frozenset[int] = frozenset()
+    lan_job_seen: bool = False
+    """A LAN job has been reported since setup (Beta 2, D8): only then does
+    an ended ``last_project`` read as finished rather than idle."""
     source: Source = "lan"
     """Which connection the readings come from now (BEHAVIOUR §5.4)."""
     cloud: CloudData | None = None
@@ -482,7 +485,12 @@ class Printer:
         or ``cancelled`` (Beta 2, D8). ``None`` when no job has ended.
         """
         last = self.state.last_job
-        if self._cloud() is not None or last is None or not last.is_finished:
+        if (
+            self._cloud() is not None
+            or not self.lan_job_seen
+            or last is None
+            or not last.is_finished
+        ):
             return None
         word = (last.state or "").strip().lower()
         if word in _ENDED_CANCELLED or (

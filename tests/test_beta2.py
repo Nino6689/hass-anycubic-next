@@ -534,6 +534,15 @@ async def test_d8_lan_job_that_ended_reads_finished(
     assert _state(hass, job_state) == "printing"
 
 
+async def test_d8_last_project_from_before_setup_reads_idle(
+    hass: HomeAssistant, printer: MockPrinter
+) -> None:
+    ended = {"task_id": 5, "filename": "old.gcode", "state": "finished"}
+    printer.connect_payloads[0] = payloads.info(last_project=ended)
+    await setup_entry(hass, lan_entry())
+    assert _state(hass, f"sensor.{P}_job_state") == "idle"
+
+
 async def test_d8_cloud_keeps_its_own_last_job(
     hass: HomeAssistant, cloud: FakeCloud
 ) -> None:

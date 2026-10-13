@@ -549,6 +549,8 @@ class AnycubicCoordinator(DataUpdateCoordinator[Printer]):
         if printer is None:
             return
         printer.state = state
+        if state.job is not None:
+            printer.lan_job_seen = True
         if not self._info_seen.is_set():
             # A fresh connection: the job is not known until `info` arrives,
             # so neither the ledger nor the entities may treat it as absent.
