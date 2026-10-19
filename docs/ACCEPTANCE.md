@@ -398,3 +398,16 @@ with `--actuate`. Similarity against the excluded trees for all three PRs, and t
   LAN prints `-1` (Kobra 4), and D18 in LAN Mode. These rest on their tests until users confirm them.
 
 **Result: Beta 3 accepted.** The libraries were released as `anycubic-lan` 0.1.2 and `anycubic-cloud-client` 0.1.2, and are pinned here.
+
+### Beta 3 on hardware in LAN Mode — 2026-10-19, live install on 3.0.0b3
+
+The development S1 was switched to LAN Mode with the live install running beta.3. One single-material print was started over LAN
+(task `-1`) and ran to the end.
+
+- **D18:** `lan_mode_active` went from `off` to `on` within a refresh, with no restart.
+- **D19:** the printer firmware entity's installed version is `2.7.2.7` in LAN Mode; its state is unknown, as stated.
+- **D8:** job state went `preheating` → `printing` → `finished`, and stayed `finished`.
+- **D15/D16:** the job numbered `-1` was charged once to the slot that fed it, 724.2 → 721.2 g (3.0 g of PLA+). The printer reported
+  951 mm, which is 2.84 g at PLA's density. "Last job filament" reads 3.0 g. Refreshes after the end charged nothing more.
+- **Observed, not specified:** job progress and job filament used read unavailable once the job is `finished` (no running job). Over the
+  cloud they keep the last job's values. Not a defect against D8; noted for a later round.
