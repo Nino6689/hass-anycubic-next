@@ -343,13 +343,14 @@ class FilamentLedger:
                 running.job_id = job_id  # the number arrived later (G9)
             if shares := printer.job_paint_shares:
                 running.shares = shares
-            else:
-                running.see(printer.job_filament_used)
+            running.see(printer.job_filament_used)
             running.name = printer.job_name or running.name
             return False
         running = self._running.pop(key, None)
         if running is None:
             return False
+        if running.job_id is None and job is not None and job_id is not None:
+            running.job_id = job_id  # the number came with the end record
         self._merge_other_source(pid, running)
         length = running.length
         if job is not None and running.same_job(job_id):
@@ -374,6 +375,8 @@ class FilamentLedger:
             if other_key[0] == pid and other.job_id == running.job_id:
                 del self._running[other_key]
                 running.see(other.length)
+                if not running.shares and other.shares:
+                    running.shares = other.shares
 
     def _charge(
         self,

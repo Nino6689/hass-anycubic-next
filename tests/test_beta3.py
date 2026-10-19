@@ -10,7 +10,9 @@ from __future__ import annotations
 import json
 import logging
 from typing import Any
+from unittest.mock import PropertyMock, patch
 
+from anycubic_cloud_client import AnycubicCloudError
 from anycubic_lan import (
     AceBox,
     AceSlot,
@@ -37,7 +39,7 @@ from custom_components.anycubic_cloud.diagnostics import (
 from custom_components.anycubic_cloud.filament import grams_from_length
 from custom_components.anycubic_cloud.lan import IntegrationLanClient
 from custom_components.anycubic_cloud.ledger import FilamentLedger
-from custom_components.anycubic_cloud.model import box_and_slot_for_feed
+from custom_components.anycubic_cloud.model import Printer, box_and_slot_for_feed
 from custom_components.anycubic_cloud.redact import (
     REDACTED,
     is_sensitive_key,
@@ -155,6 +157,11 @@ async def test_d9_cloud_diagnostics_hide_tokens_and_personal_data(
         *PROJECT_RECORD.values(),
     ):
         assert secret not in dump, secret
+    # A JSON document carried as text is redacted inside, and kept readable.
+    assert "relative/image/path.png" not in dump
+    slice_param = json.loads(result["printers"][0]["cloud"]["job"]["slice_param"])
+    assert slice_param["image_id"] == REDACTED
+    assert slice_param["layer_height"] == 0.2
     account = result["cloud"]["account"]
     assert account["casdoor_user_token"] == REDACTED
     assert account["tourist_device_id"] == REDACTED
@@ -1125,3 +1132,53 @@ async def test_d16_ledger_follows_each_source_apart(hass: HomeAssistant) -> None
     show("lan", payloads.job(task_id="-1", supplies_usage=2 * LENGTH))
     show("lan", None)
     assert used() == pytest.approx(4 * one, abs=0.04)
+
+
+async def test_d14_cloud_error_messages_are_redacted(
+    hass: HomeAssistant, cloud: FakeCloud
+) -> None:
+    entry = await _cloud(hass)
+    cloud.printer_errors[cp.PRINTER_ID] = AnycubicCloudError(f"refused {JWT}")
+    await _poll(entry)
+    error = entry.runtime_data.primary.last_exception
+    assert error is not None
+    assert "eyJ" not in str(error.translation_placeholders)
+
+
+async def test_d16_shares_length_and_late_number(hass: HomeAssistant) -> None:
+    """A multi-colour cloud run still records its length; its split survives
+    the end on LAN; a number first seen on the end record is adopted."""
+    ledger = FilamentLedger(hass, "entry")
+    await ledger.async_load()
+    printer = make_printer()
+    pid = printer.printer_id
+    feed(printer, payloads.ace(payloads.box(0, loaded_slot=3)))
+    shares = {0: 0.5, 1: 0.5}
+
+    def show(source: str, project: dict[str, Any] | None) -> None:
+        printer.source = source  # type: ignore[assignment]
+        feed(printer, payloads.info(project=project))
+        ledger.update(printer)
+
+    def used(slot: str) -> float:
+        slots = ledger.data["printers"][str(pid)]["slots"]
+        return float(slots.get(slot, {}).get("filament_used_g", 0.0))
+
+    with patch.object(Printer, "job_paint_shares", new_callable=PropertyMock) as paint:
+        paint.return_value = shares
+        show("cloud", payloads.job(task_id=5, supplies_usage=LENGTH))
+        paint.return_value = {}
+        show("lan", payloads.job(task_id=5, supplies_usage=100))
+        show("lan", None)
+    half = grams_from_length(LENGTH / 2, "PLA")
+    assert used("0") == pytest.approx(half, abs=0.01)
+    assert used("1") == pytest.approx(half, abs=0.01)
+    # An unnumbered run whose end record carries the number: it is adopted,
+    # so the other source's run of that number is not charged again.
+    show("cloud", payloads.job(task_id=8, supplies_usage=LENGTH))
+    show("lan", payloads.job(task_id=None, supplies_usage=LENGTH))
+    show("lan", payloads.job(task_id=8, print_status=2, state="finished"))
+    assert ledger.data["printers"][str(pid)]["last_job_id"] == 8
+    before = used("3")
+    show("cloud", None)
+    assert used("3") == before

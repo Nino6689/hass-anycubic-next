@@ -338,7 +338,7 @@ class CloudAccount:
                 raise ConfigEntryNotReady(
                     translation_domain=DOMAIN,
                     translation_key="cloud_unavailable",
-                    translation_placeholders={"error": str(err)},
+                    translation_placeholders={"error": redact_text(str(err))},
                 ) from err
         self.client = client
         self.account = account
@@ -360,7 +360,7 @@ class CloudAccount:
             raise ConfigEntryNotReady(
                 translation_domain=DOMAIN,
                 translation_key="cloud_unavailable",
-                translation_placeholders={"error": str(err)},
+                translation_placeholders={"error": redact_text(str(err))},
             ) from err
         _LOGGER.debug(
             "Anycubic cloud not answering at setup (%s); retrying",
@@ -483,7 +483,7 @@ class CloudAccount:
         self._error = UpdateFailed(
             translation_domain=DOMAIN,
             translation_key="cloud_unavailable",
-            translation_placeholders={"error": str(err)},
+            translation_placeholders={"error": redact_text(str(err))},
         )
         for coordinator in self.runtime.cloud_coordinators():
             if coordinator is not caller:
