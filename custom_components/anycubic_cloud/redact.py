@@ -203,8 +203,22 @@ def _redact(value: Any, ids: _Ids) -> Any:
     if isinstance(value, list | tuple):
         return [_redact(item, ids) for item in value]
     if isinstance(value, str):
+        if (embedded := _embedded_json(value)) is not None:
+            # A JSON document carried as text (a cloud job's ``slice_param``).
+            return json.dumps(_redact(embedded, ids), separators=(",", ":"))
         return ids.value(redact_text(value))
     return ids.value(value)
+
+
+def _embedded_json(text: str) -> dict[str, Any] | list[Any] | None:
+    stripped = text.strip()
+    if not stripped.startswith(("{", "[")):
+        return None
+    try:
+        decoded = json.loads(stripped)
+    except ValueError:
+        return None
+    return decoded if isinstance(decoded, dict | list) else None
 
 
 def redact_payload(payload: bytes | str) -> str:
