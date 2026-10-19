@@ -25,11 +25,12 @@ from custom_components.anycubic_cloud.identity import (
     entry_unique_id_for_lan,
     unique_id_mac,
 )
-from custom_components.anycubic_cloud.lan import redact_payload, redact_topic
+from custom_components.anycubic_cloud.lan import redact_topic
 from custom_components.anycubic_cloud.model import (
     ace_model_name,
     material_type_from_device_type,
 )
+from custom_components.anycubic_cloud.redact import redact_payload
 from custom_components.anycubic_cloud.spool_image import spool_picture
 
 
@@ -156,8 +157,8 @@ def test_redact_short_numeric_device_id() -> None:
 
 def test_redact_payload() -> None:
     raw = b'{"urls": {"fileUploadurl": "http://h:18910/gcode_upload?s=SECRET"}}'
-    assert b"SECRET" not in redact_payload(raw)
-    assert redact_payload(b'{"a": 1}') == b'{"a": 1}'
+    assert "SECRET" not in redact_payload(raw)
+    assert redact_payload(b'{"a": 1}') == '{"a":1}'
 
 
 def test_spool_picture() -> None:
