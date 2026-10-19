@@ -380,3 +380,21 @@ and the local and USB file-list buttons are unavailable in LAN Mode.
 
 **Already holds — test `test_beta3.py::test_d20_coordinators_have_their_entry`.** The integration has one coordinator class,
 built with `config_entry=` in every case.
+
+### Beta 3 acceptance — 2026-10-19, `clean/beta3` @ `bf4c20f` with `anycubic-lan` @ `1f02367` and `anycubic-cloud-client` @ `dd26db4`
+
+**Method.** The upgrade test over a fresh snapshot of the live install (now 3.0.0b2), against the real Kobra S1 on the cloud (LAN Mode off),
+with `--actuate`. Similarity against the excluded trees for all three PRs, and the secret scan.
+
+- The entry loads. Its data, options and version are untouched. All 132 unique ids re-attach, with no id changes. Devices are kept.
+- **128 of 129 compared entities match live exactly in value and unit.** The one difference is `job_preview`'s timestamp (the same image, fetched later).
+- One new entity, as D18 asks: `binary_sensor.anycubic_kobra_s1_lan_mode_active`, enabled. It reads `off` with the printer in cloud mode, not unavailable.
+- 54 entities read unavailable or unknown at idle, the same as beta.2 (buttons without a press, and job values with no job).
+- The filament ledger is identical. The light (off/on) and the part fan (20 %, then 0) are reported back over the cloud. The only warning in the log is
+  Home Assistant's notice for any custom integration.
+- Similarity is unchanged from beta.2: integration 40/12/7 (the error-code table, the density table and import blocks), cloud client 25/23
+  (Agora join fields and function-id names), `anycubic-lan` 6. The secret scan found 0 hits in 110 files.
+- **Not verifiable on the development machine:** D10, D12 and D13 (no Kobra X), D11 (no ACE 2 Pro), D15 and D16 with a printer that numbers
+  LAN prints `-1` (Kobra 4), and D18 in LAN Mode. These rest on their tests until users confirm them.
+
+**Result: Beta 3 accepted.** The libraries were released as `anycubic-lan` 0.1.2 and `anycubic-cloud-client` 0.1.2, and are pinned here.
