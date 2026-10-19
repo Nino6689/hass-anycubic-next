@@ -12,7 +12,7 @@ import logging
 from typing import Any
 
 from anycubic_cloud_client import AnycubicCloudError
-from anycubic_lan import AceBox, AceSlot, PrinterState
+from anycubic_lan import AceBox, PrinterState
 from homeassistant.core import HomeAssistant
 import homeassistant.util.dt as dt_util
 import pytest
@@ -22,11 +22,7 @@ from pytest_homeassistant_custom_component.common import (
 )
 
 from custom_components.anycubic_cloud.control import drying_temperature
-from custom_components.anycubic_cloud.model import (
-    Printer,
-    PrinterIdentity,
-    ace_slot_for_channel,
-)
+from custom_components.anycubic_cloud.model import Printer, PrinterIdentity
 
 from . import cloud_payloads as cp, payloads
 from .cloud_fakes import FakeCloud
@@ -322,26 +318,6 @@ async def test_d3_lan_connection_asks_for_boxes(
 # -- D4: active channel on the Kobra X ---------------------------------------------
 
 
-def _boxes(*sizes: int) -> tuple[AceBox, ...]:
-    return tuple(
-        AceBox(id=i, slots=tuple(AceSlot(index=s) for s in range(size)))
-        for i, size in enumerate(sizes)
-    )
-
-
-def test_d4_channel_numbering() -> None:
-    """The inferred numbering: from 1, across every box in order."""
-    one = _boxes(4)
-    assert ace_slot_for_channel(one, 3) == (0, 2)
-    assert ace_slot_for_channel(one, 4) == (0, 3)
-    assert ace_slot_for_channel(one, 0) is None
-    assert ace_slot_for_channel(one, 5) is None
-    two = _boxes(4, 4)
-    assert ace_slot_for_channel(two, 5) == (1, 0)
-    assert ace_slot_for_channel(two, 8) == (1, 3)
-    assert ace_slot_for_channel(_boxes(0, 4), 6) == (1, 1)  # unlisted: 4 slots
-
-
 def _channel(channel: int) -> dict[str, Any]:
     return {"channel_no": channel, "settings": {"light": 0}}
 
@@ -372,27 +348,8 @@ async def test_d4_lan_loaded_slot_follows_channel_no(
     assert _state(hass, sensor) == "2"
 
 
-async def test_d4_second_box_and_cloud_channel(
-    hass: HomeAssistant, cloud: FakeCloud
-) -> None:
-    cloud.printers[cp.PRINTER_ID]["machine_type"] = 20030
-    cloud.printers[cp.PRINTER_ID]["multi_color_box"] = [cp.ace_box(0), cp.ace_box(1)]
-    await _cloud(hass)
-    first = f"sensor.{C}_ace_pro_ace_loaded_slot"
-    second = f"sensor.{C}_ace_pro_2_secondary_ace_loaded_slot"
-    assert (_state(hass, first), _state(hass, second)) == ("2", "2")
-    cloud.feed(cp.mqtt("print", "update", "updated", _channel(6)))
-    await _settle(hass)
-    # Channel 6 is the second box's slot 2; the first box feeds nothing.
-    assert _state(hass, second) == "2"
-    assert _state(hass, first) == "unavailable"
-    cloud.feed(cp.mqtt("print", "update", "updated", _channel(3)))
-    await _settle(hass)
-    assert (_state(hass, first), _state(hass, second)) == ("3", "unavailable")
-    # A channel past every slot names none: the boxes' own readings stand.
-    cloud.feed(cp.mqtt("print", "update", "updated", _channel(9)))
-    await _settle(hass)
-    assert (_state(hass, first), _state(hass, second)) == ("2", "2")
+# D4's numbering across boxes was corrected by Beta 3's D10: see
+# test_beta3.py (test_d10_*).
 
 
 # -- D5: progress-only print updates ------------------------------------------------
