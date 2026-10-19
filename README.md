@@ -10,7 +10,7 @@ setup changes.
   the same clean libraries as the Home Assistant core integration.
 - **How:** written from specifications in [`docs/`](docs/) by a separate
   implementation team, under the rules in [`docs/CLEAN-ROOM.md`](docs/CLEAN-ROOM.md).
-- **Status:** 3.0 beta (`3.0.0-beta.2`, manifest `3.0.0b2`). Printers are reached
+- **Status:** 3.0 beta (`3.0.0-beta.3`, manifest `3.0.0b3`). Printers are reached
   over LAN Mode, over the Anycubic cloud, or both: the LAN half (Phase B),
   the dashboard card and side panel (Phase C) and the cloud half (Phase E2)
   are in `custom_components/anycubic_cloud/` and `frontend/`. Until 3.0 is
