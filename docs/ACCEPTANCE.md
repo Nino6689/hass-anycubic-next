@@ -248,3 +248,84 @@ with `--actuate`. Similarity against the excluded trees for all three PRs, and t
 
 **Result: Beta 2 accepted.** The libraries were released as `anycubic-lan` 0.1.1 and `anycubic-cloud-client` 0.1.1, and are pinned here.
 
+## Beta 3 — field reports, 2026-10-15 to 2026-10-19 (D9–D20)
+
+**Source.** Reports from users on a Kobra X with and without an ACE 2 Pro, and a Kobra 4 with an ACE 2 Pro in LAN Mode (some of it observed on
+3.0.0-beta.2 itself), confirmed where possible on the development S1. They are stated as what the printer sends and what a user should see,
+and are the acceptance checks for 3.0.0-beta.3. If 3.0 already behaves as expected, add a test that shows it and say so under the item.
+
+**D9 (diagnostics carry a sign-in token) and D16 (a Kobra 4 charges no LAN print) block the beta.** D17 is wanted but not blocking: if it
+doesn't fit safely, say so under it and leave it for a later beta.
+
+### D9. Diagnostics must carry no credential or personal data 🔴
+- Confirmed on the live 3.0.0b2 install: the diagnostics download's `cloud.account` block contains **`casdoor_user_token`**. That's a JWT sign-in token for the Anycubic account. Its claims include `email`, `phone`, `id`, `scope` and `exp`, and the one checked had more than two months left. The same block also contains **`tourist_device_id`**.
+- The account record also carries `user_activation_key` and `user_url`. A real 2.x download showed that cloud printer and project records carry: the printer serial, hex-encoded, as `description`; every print's file name (`name`, `task_name`, `filename`, `display_filename`, `gcode_name`, `temp_gcode`); and its image (`img`, `image_id`).
+- Expected:
+  - None of those values appear in a download.
+  - A credential added later under a new key mustn't leak either. Any key containing `token`, `secret` or `password`, and any string shaped like a JWT (three base64url segments starting `eyJ`), is redacted wherever it appears.
+  - Empty or null values may stay visible.
+  - Print history may remain without names or images, because status is what bugs are debugged from.
+  - A printer id appears as the same placeholder in every block.
+- Test with fixtures carrying each field above. Assert the raw values are absent from `json.dumps` of the download.
+
+### D10. Filament-change steps, counted per box (corrects D4)
+- During a multi-colour print, a Kobra X (20030) with an ACE 2 Pro sends `print` messages with `action: start`, `code: 200`, and these states:
+  - `extfilbox_filament_feeding`, `extfilbox_filament_unfeeding`: data `{"channel_no": N, "taskid": …}`. **No `unit_no`.** This is the printer's own feeder.
+  - `ace_filament_feeding`: data `{"channel_no": N, "taskid": …, "unit_no": 1}`. This is the ACE.
+  - `nozzle_purging`: data `{"channel_no": N, "taskid": …}`.
+- Observed sequence in one print: own feeder 1 → 1 → 2, then ACE unit 1 channel 1, then ACE unit 1 channel 2.
+- **`channel_no` counts from 1 within its box, not across boxes.** D4's "across every box in order" was wrong.
+- Not yet known: which entry in the box list is the Kobra X's own feeder when an ACE is fitted, and whether `unit_no` 1 means list index 0 or 1. The ACE 2 Pro's drying report names box `id: 0`. Without an ACE, the Kobra X's own feeder is the only box (#34).
+- Expected:
+  - A feed with one box sets that box's loaded slot to `channel_no − 1`.
+  - On a printer whose boxes are all ACEs (e.g. an S1 with two), `unit_no` U selects ACE U.
+  - On a Kobra X with an ACE, the loaded slot isn't changed until the mapping is confirmed. A wrong slot is worse than a stale one.
+  - Purge and unfeed steps change nothing and log nothing above debug.
+
+### D11. ACE 2 Pro drying report without a temperature
+- The ACE 2 Pro's periodic `multiColorBox` / `autoUpdateDryStatus` / `success` report carries per box only `{"id": 0, "drying_status": {"duration": 14400, "humidity": 28, "remain_time": 162, "status": 1, "target_temp": 50}}`. There's **no `temp`**.
+- Expected: drying state, humidity, target and remaining time update from it. The box temperature keeps its last reading and is never set to 0 or unknown because of this report. Nothing is logged above debug.
+
+### D12. A cloud refresh must not overwrite the slot the printer reported
+- While the printer was printing from slot 4, the loaded-slot sensor changed to slot 2. No message from the printer arrived at that moment. The only event was the periodic cloud printer-info refresh. The cloud record's `multi_color_box[].loaded_slot` goes stale during a print. The Anycubic slicer shows the wrong slot too.
+- Expected: once the printer has reported a loaded slot (by MQTT or LAN, through any of D4, D10 or D13), a cloud refresh doesn't change it. The printer's next report does. With no printer report, the cloud value is used. Other fields from the cloud refresh (temperatures, spools) still update.
+
+### D13. The printer's own `current_filament` report
+- The `extfilbox` report with `action: auto`, `state: done` carries `current_filament` as `"<box>-<slot>"`, both counted from 0. `"0-3"` was observed while the screen showed slot 4 and `channel_no` was 4. It reads `""` while the filament is retracted for leveling or wiping.
+- Expected: on a printer with one box, the loaded slot follows it. An empty or malformed reading keeps the last slot. With several boxes, apply the same certainty rule as D10.
+
+### D14. Logs must not carry printer identifiers
+- A debug log of an MQTT message printed the raw payload. A `buried` / `PrintStart` report includes `cn_code`, and only the printer key in the topic was redacted.
+- Expected: no log line at any level contains `cn_code`, serials, MAC or IP addresses, printer keys, or any value under a key containing `token`, `secret` or `password`. Use the same rules as D9.
+
+### D15. Job numbers that arrive as text, and job `-1`
+- During a LAN print a Kobra 4 sends the job number as **text**: `task_id: "-1"` in the info report's `project` block, and `taskid: "-1"` in the `print` report sent when the print starts. Every LAN print is `-1`.
+- The `last_project` block (the one with a `localtask` field) carries the previous **cloud** job number, also as text (`"131189709"`).
+- Expected:
+  - A job number that arrives as text is read the same as a number, including a negative one.
+  - `-1`, `0` and anything that isn't a whole number identify no job. Two jobs both numbered `-1` are never treated as the same job.
+
+### D16. LAN prints are charged without relying on a job number 🔴
+- Observed on beta.2: two identical short LAN prints from slot 4 (about 0.9 g, 309 mm "filament used" each). The spool didn't change, and neither job is in the history. The 309 mm was seen while printing. The charge was skipped only because the job had no number.
+- Expected:
+  - Every LAN print that Home Assistant watched running is charged to its spool once, when it finishes. That includes the same file printed twice in a row, whose finished record reads identically both times.
+  - A print that finished before Home Assistant was watching (an upgrade or a restart) isn't charged.
+  - A job is never charged twice, whether it's seen over LAN, over the cloud, or both. A Kobra S1 gives LAN prints a real job number that the cloud may later report.
+  - Switching the printer from LAN Mode back to the cloud never charges a job again. Seen on 2.x: the cloud re-reported its newest job (a September print, charged at the time) as soon as the printer came back, and it was charged a second time.
+
+### D17. A restart mid-print shouldn't lose the print (wanted, not blocking)
+- Today a print is charged once, at the end, and only if it was watched running. A Home Assistant restart mid-print loses the whole job.
+- The reporter's own automation counts as the print runs: each time "filament used" rises, the new millimetres are converted to grams for the slot loaded at that moment. That survives restarts and handles multi-colour prints, and the spool goes down live.
+- Expected, if adopted: charging is incremental and persisted, the total for a job matches what a charge at the end would give, and nothing is counted twice across a restart.
+
+### D18. A "LAN Mode active" sensor
+- In cloud mode the Kobra 4 closes all its LAN ports. Whether port 18910 answers tells the current mode reliably. The reporter uses that as a sensor today.
+- Expected: a binary sensor that is on while the printer's LAN port answers and off when it's refused. It's never unavailable just because the printer is in cloud mode. Switching modes from Home Assistant isn't possible as far as anyone knows; the printer's messages point to its screen.
+
+### D19. Firmware version in LAN Mode
+- Observed on beta.2: printer and ACE firmware read `unknown` in LAN Mode. The LAN info report carries the printer's firmware as `version` (`"2.7.2.7"` on a Kobra S1).
+- Expected: the printer firmware entity reads the LAN `version` while in LAN Mode. ACE firmware may stay unknown if nothing local reports it.
+- Also observed and expected: the cloud camera and the file-list buttons are unavailable in LAN Mode.
+
+### D20. The update coordinator is created with its config entry
+- Core requires it, so it matters for the core `anycubic` integration too. Expected: every coordinator receives the config entry when it's built.
