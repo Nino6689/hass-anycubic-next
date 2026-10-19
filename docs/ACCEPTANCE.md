@@ -411,3 +411,6 @@ The development S1 was switched to LAN Mode with the live install running beta.3
   951 mm, which is 2.84 g at PLA's density. "Last job filament" reads 3.0 g. Refreshes after the end charged nothing more.
 - **Observed, not specified:** job progress and job filament used read unavailable once the job is `finished` (no running job). Over the
   cloud they keep the last job's values. Not a defect against D8; noted for a later round.
+- **D8 (cancelled):** a LAN job stopped during preheating reads `cancelled`; it reported 0 mm and nothing was charged.
+- **Observed, not specified:** "Last job filament" changed from 3.0 to 2.8 g when the printer dropped off the network for ~20 s and
+  reconnected, with no new job. The spools did not change. The value should not be recomputed on reconnect; noted for a later round.
