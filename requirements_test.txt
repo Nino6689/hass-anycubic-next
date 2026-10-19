@@ -1,6 +1,8 @@
 # Test and lint dependencies (CI and local development).
-anycubic-lan==0.1.1
-anycubic-cloud-client==0.1.1
+# Beta 3 (ACCEPTANCE D9-D20) needs both libraries' clean/beta3 branches
+# (their PRs) until those are merged and released; then pin the releases.
+anycubic-lan @ git+https://github.com/Nino6689/anycubic-lan@clean/beta3
+anycubic-cloud-client @ git+https://github.com/Nino6689/anycubic-cloud-client@clean/beta3
 # The Anycubic app credentials package (CLOUD.md §1) is never installed for
 # tests: the loader is mocked.
 # Releases after 0.13.316 (Home Assistant 2026.3+) require Python 3.14; on

@@ -1,6 +1,6 @@
 {
   "name": "anycubic-cloud-frontend",
-  "version": "1.0.0-beta.2",
+  "version": "1.0.0-beta.3",
   "description": "Sidebar panel and dashboard card for the anycubic_cloud Home Assistant integration",
   "license": "MIT",
   "private": true,

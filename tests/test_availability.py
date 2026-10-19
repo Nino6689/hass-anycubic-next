@@ -26,6 +26,8 @@ from .conftest import MockPrinter, find_device, lan_entry, setup_entry
 
 NOZZLE = "sensor.anycubic_kobra_s1_nozzle_temperature"
 ONLINE = "binary_sensor.anycubic_kobra_s1_printer_online"
+# Reads the outcome of the LAN connection itself, so it stays available (D18).
+LAN_MODE = "binary_sensor.anycubic_kobra_s1_lan_mode_active"
 LIGHT = "light.anycubic_kobra_s1_printer_light"
 PAUSE = "button.anycubic_kobra_s1_pause_print"
 
@@ -36,6 +38,7 @@ def _entity_states(hass: HomeAssistant, entry_id: str) -> dict[str, str]:
         item.entity_id: state.state
         for item in er.async_entries_for_config_entry(registry, entry_id)
         if (state := hass.states.get(item.entity_id)) is not None
+        and item.entity_id != LAN_MODE
     }
 
 
@@ -68,9 +71,11 @@ async def test_printer_off_goes_unavailable_once_and_stays(
     states = _entity_states(hass, entry.entry_id)
     assert set(states.values()) == {STATE_UNAVAILABLE}
 
+    assert hass.states.get(LAN_MODE).state == "on"  # no attempt has failed yet
     for _ in range(5):
         await _tick(hass, freezer)
     assert changes == [STATE_UNAVAILABLE]
+    assert hass.states.get(LAN_MODE).state == "off"
     assert set(_entity_states(hass, entry.entry_id).values()) == {STATE_UNAVAILABLE}
     # Every refresh ran the full handshake again (G2).
     assert printer.handshakes >= 6
@@ -81,6 +86,7 @@ async def test_printer_off_goes_unavailable_once_and_stays(
     assert first.disconnected
     assert hass.states.get(NOZZLE).state == "34.0"
     assert hass.states.get(ONLINE).state == "on"
+    assert hass.states.get(LAN_MODE).state == "on"
     assert changes == [STATE_UNAVAILABLE, "34.0"]
 
 

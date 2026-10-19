@@ -55,7 +55,10 @@ async def test_diagnostics_redact_secrets(
     assert state["firmware_version"] == "2.7.2.7"
     assert printer_diag["printer"]["identity"]["mac"] == "**REDACTED**"
     assert state["ace_boxes"][0]["slots"][0]["material"] == "PLA"
-    assert result["capabilities"] == {"printers": {"42424242": {"light_types": [2]}}}
+    # The printer id reads as one placeholder in every block (D9).
+    assert result["capabilities"] == {"printers": {"printer_1": {"light_types": [2]}}}
+    assert printer_diag["printer"]["identity"]["printer_id"] == "printer_1"
+    assert "42424242" not in dump
     assert printer_diag["forecast"] is None
     assert printer_diag["cloud"] is None
     assert "printers" in result["ledger"]
@@ -89,10 +92,11 @@ async def test_cloud_diagnostics_redact_account_and_printer(
     assert cloud_diag["auth_mode"] == 3
     assert cloud_diag["last_poll_ok"] is True
     assert cloud_diag["mqtt"]["possible"] is True
-    assert cloud_diag["cloud_files"][0]["name"] == "benchy.gcode"
+    assert cloud_diag["cloud_files"][0]["name"] == "**REDACTED**"  # D9
     (printer,) = result["printers"]
     assert printer["connection"]["source"] == "cloud"
     assert printer["cloud"]["detail"]["model"] == "Anycubic Kobra S1"
-    assert printer["cloud"]["job"]["gcode_name"] == "benchy_PLA_0.2.gcode"
+    assert printer["cloud"]["job"]["gcode_name"] == "**REDACTED**"  # D9
+    assert printer["cloud"]["job"]["print_status"] is not None
     assert printer["cloud"]["job_detail"]["z_thick"] == 0.2
     assert printer["cloud"]["firmware"]["installed_version"] == "2.7.2.7"
