@@ -88,7 +88,7 @@ async def test_idle_printer(hass: HomeAssistant, loaded: MockConfigEntry) -> Non
     assert _get(hass, f"binary_sensor.{P}_job_in_progress").state == "off"
     assert _get(hass, f"sensor.{P}_fan_speed").state == "55"
     assert _get(hass, f"sensor.{P}_auxiliary_fan_speed").state == "20"
-    assert _get(hass, f"sensor.{A}_ace_box_fan_level").state == "3"
+    assert _get(hass, f"sensor.{P}_chamber_fan_level").state == "3"
     assert _get(hass, f"sensor.{P}_job_speed_mode").state == "2"
     assert (
         _get(hass, f"sensor.{P}_job_speed_mode").attributes

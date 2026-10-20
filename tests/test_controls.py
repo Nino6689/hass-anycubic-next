@@ -370,7 +370,7 @@ async def test_printer_numbers(
         ),
         ("set_fan_speed", 40, ("fan", "setSpeed", {"fan_speed_pct": 40})),
         ("set_auxiliary_fan_speed", 30, ("fan", "setSpeed", {"aux_fan_speed_pct": 30})),
-        ("set_box_fan_level", 2, ("fan", "setSpeed", {"box_fan_level": 2})),
+        ("set_chamber_fan_level", 2, ("fan", "setSpeed", {"box_fan_level": 2})),
     ):
         await hass.services.async_call(
             "number",
