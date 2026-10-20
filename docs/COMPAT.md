@@ -153,13 +153,14 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 | `drying_set_duration` | number | Drying duration | ACE 1 | MINUTES | DURATION |  | config | yes |  |  |
 | `drying_set_temperature` | number | Drying temperature | ACE 1 | CELSIUS | TEMPERATURE |  | config | yes |  |  |
 | `set_aux_fan_speed_pct` | number | Set auxiliary fan speed | printer | PERCENTAGE |  |  |  | yes |  |  |
-| `set_box_fan_level` | number | Set box fan level | printer |  |  |  |  | yes |  |  |
+| `set_box_fan_level` | number | Set chamber fan level | printer |  |  |  |  | yes |  |  |
 | `set_fan_speed_pct` | number | Set fan speed | printer | PERCENTAGE |  |  |  | yes |  |  |
 | `set_target_hotbed_temp` | number | Set bed temperature | printer | CELSIUS | TEMPERATURE |  |  | yes |  |  |
 | `set_target_nozzle_temp` | number | Set nozzle temperature | printer | CELSIUS | TEMPERATURE |  |  | yes |  |  |
 | `axis_step` | select | Axis step size | printer |  |  |  |  | yes |  |  |
 | `set_speed_mode` | select | Print speed mode | printer |  |  |  |  | yes |  |  |
 | `ace_current_temperature` | sensor | ACE Current Temperature | ACE 1 | CELSIUS |  |  |  | yes |  |  |
+| `ace_humidity` | sensor | ACE Humidity | ACE 1 | PERCENTAGE | HUMIDITY |  |  | yes |  |  |
 | `ace_loaded_slot` | sensor | ACE Loaded Slot | ACE 1 |  |  |  |  | yes |  |  |
 | `ace_slot_1` | sensor | ACE Slot 1 | ACE 1 |  |  |  |  | yes |  | `color`, `color_hex`, `colors_hex`, `consumables_percent`, `edit_status`, `is_multi_color`, `sku`, `slot`, `spool_loaded`, `status` |
 | `ace_slot_1_filament_remaining` | sensor | ACE slot 1 filament remaining | ACE 1 |  |  |  |  | yes |  |  |
@@ -178,7 +179,8 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 | `axis_position_x` | sensor | Head position X | printer | MILLIMETERS | DISTANCE |  |  | no |  |  |
 | `axis_position_y` | sensor | Head position Y | printer | MILLIMETERS | DISTANCE |  |  | no |  |  |
 | `axis_position_z` | sensor | Head position Z | printer | MILLIMETERS | DISTANCE |  |  | no |  |  |
-| `box_fan_level` | sensor | ACE Box Fan Level | ACE 1 |  |  |  |  | yes |  |  |
+| `box_fan_level` | sensor | Chamber Fan Level | printer |  |  |  |  | yes |  |  |
+| `chamber_temperature` | sensor | Chamber Temperature | printer | CELSIUS | TEMPERATURE |  |  | yes |  |  |
 | `curr_hotbed_temp` | sensor | Hotbed Temperature | printer | CELSIUS |  |  |  | yes |  |  |
 | `curr_nozzle_temp` | sensor | Nozzle Temperature | printer | CELSIUS |  |  |  | yes |  |  |
 | `current_status` | sensor | Current Status | printer |  |  |  |  | yes |  | `device_status_code`, `is_printing_code`, `job_download_progress`, `machine_type`, `material_type`, `model`, `peripherals`, `print_status_code`, `supported_functions`, `total_material_used`, `total_print_time_dhm`, `total_print_time_hrs` |
@@ -232,6 +234,7 @@ Existence rules (**Type** column): `printer` — every printer; `fdm` — filame
 | Key | Platform | Name (en) | Type | Unit | Device class | State class | Category | Enabled by default |
 |---|---|---|---|---|---|---|---|---|
 | `secondary_ace_current_temperature` | sensor | Secondary ACE Current Temperature | ACE_SECONDARY | CELSIUS |  |  |  | yes |
+| `secondary_ace_humidity` | sensor | Secondary ACE Humidity | ACE_SECONDARY | PERCENTAGE | HUMIDITY |  |  | yes |
 | `secondary_ace_loaded_slot` | sensor | Secondary ACE Loaded Slot | ACE_SECONDARY |  |  |  |  | yes |
 | `secondary_ace_spools` | sensor | Secondary ACE Spools | ACE_SECONDARY |  |  |  |  | yes |
 | `secondary_dry_status_target_temperature` | sensor | Secondary Drying Target Temperature | ACE_SECONDARY | CELSIUS |  |  |  | yes |

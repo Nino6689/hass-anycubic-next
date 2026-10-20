@@ -414,3 +414,30 @@ The development S1 was switched to LAN Mode with the live install running beta.3
 - **D8 (cancelled):** a LAN job stopped during preheating reads `cancelled`; it reported 0 mm and nothing was charged.
 - **Observed, not specified:** "Last job filament" changed from 3.0 to 2.8 g when the printer dropped off the network for ~20 s and
   reconnected, with no new job. The spools did not change. The value should not be recomputed on reconnect; noted for a later round.
+
+## Beta 4 — field reports, 2026-10-19 to 2026-10-20 (D21–D23)
+
+**Source.** hass-anycubic #44, from a Kobra S1 Max owner with an ACE, with diagnostics, and the development Kobra S1's own history. 2.x
+shipped these in 2.9.9, so they are compatibility facts as well as features: COMPAT.md has the new rows, and an update from 2.9.9 must find
+the same unique ids on the same devices. If 3.0 already behaves as expected, add a test that shows it and say so under the item.
+
+### D21. Chamber temperature, where the printer has a sensor
+- A Kobra S1 Max reports a real chamber temperature in the printer's temperature data (`curr_chamber_temp`, 32 °C in the reporter's
+  diagnostics), both in the cloud record and when asked locally. A Kobra S1 has no chamber sensor and reports `0` in the same field.
+- Expected: a `chamber_temperature` sensor on the printer device, °C, device class temperature. It's created the first time the printer reports a
+  non-zero value, and never on a printer that only ever reports `0` or nothing. `0` reads as "no reading", not as 0 °C.
+
+### D22. ACE humidity, where the box has a sensor
+- An ACE's own report carries `humidity`. Some boxes send real values (58–84 % have been seen); others send `0`. D11's ACE 2 Pro drying report
+  carries it too.
+- Expected: `ace_humidity` on the first ACE and `secondary_ace_humidity` on the second, %, device class humidity. As with D21, each is created on
+  the first non-zero reading, and `0` means no sensor. 3.0 already shows humidity in the card's box data; this is the entity.
+
+### D23. The box fan is the printer's enclosure fan
+- On the development Kobra S1 on 2026-10-19, `box_fan_level` went to 60, then 80, during a print (08:10–08:18 UTC) while the ACE never dried. It
+  is set through the same print-settings command as the part and auxiliary fans. It belongs to the printer, not the ACE.
+- Expected: `box_fan_level` sits on the **printer** device, named "Chamber Fan Level". Its unique id doesn't change, so an existing entity keeps
+  its entity id and only changes device. The `set_box_fan_level` number is named "Set chamber fan level". The sensor is created when the
+  printer first reports the value, so a printer that never reports it gets no entity. A second ACE doesn't get a copy.
+- Upgrade check: from a 2.9.9 install, `box_fan_level` re-attaches to the printer device and `chamber_temperature`/`ace_humidity` re-attach
+  wherever 2.9.9 had created them.
