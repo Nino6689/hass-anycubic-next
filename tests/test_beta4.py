@@ -1,4 +1,4 @@
-"""Beta 4: field reports, 2026-10-19 to 2026-10-20 (ACCEPTANCE.md D21-D23).
+"""Beta 4: field reports, 2026-10-19 to 2026-10-20 (ACCEPTANCE.md D21-D24).
 
 Each test is named after the item it accepts. Printer messages run through
 the libraries' own parsers: anycubic-lan for LAN (the fake LAN client) and
@@ -13,13 +13,18 @@ from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import PERCENTAGE, STATE_UNAVAILABLE, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
+import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.anycubic_cloud.const import DOMAIN
+from custom_components.anycubic_cloud.filament import grams_from_length
+from custom_components.anycubic_cloud.ledger import FilamentLedger
+from custom_components.anycubic_cloud.model import Printer
 
 from . import cloud_payloads as cp, payloads
 from .cloud_fakes import FakeCloud
 from .conftest import MockPrinter, account_entry, lan_entry, setup_entry
+from .test_ledger import PID as LEDGER_PID, feed, make_printer
 
 P = "anycubic_kobra_s1"
 C = "kobra_s1_cloud"
@@ -341,3 +346,186 @@ async def test_d23_existing_box_fan_moves_to_the_printer(
     await _feed(hass, printer, payloads.envelope("fan", {"box_fan_level": 60}))
     assert hass.states.get(old.entity_id).state == "60"
     assert registry.async_get(old.entity_id).device_id == item.device_id
+
+
+# -- D24: a finished print is charged to the slot that fed it ----------------------
+
+LENGTH = 3000  # mm
+
+
+def _used(ledger: FilamentLedger, pid: int) -> dict[int, float]:
+    """Grams booked per slot index, slots with none left out."""
+    slots = ledger.data["printers"].get(str(pid), {}).get("slots", {})
+    return {
+        int(index): slot["filament_used_g"]
+        for index, slot in slots.items()
+        if slot.get("filament_used_g")
+    }
+
+
+def _job(usage: float, **changes: Any) -> dict[str, Any]:
+    return payloads.job(task_id="-1", supplies_usage=usage, **changes)
+
+
+def _box(loaded: int) -> dict[str, Any]:
+    return payloads.ace(payloads.box(0, loaded_slot=loaded))
+
+
+FINISHED = {"state": "finished", "print_status": 2}
+
+
+@pytest.fixture
+async def ledger(hass: HomeAssistant) -> FilamentLedger:
+    ledger = FilamentLedger(hass, "entry")
+    await ledger.async_load()
+    return ledger
+
+
+def _run(ledger: FilamentLedger, printer: Printer, *steps: dict[str, Any]) -> None:
+    """Each report reaches the ledger on its own, as the coordinator does."""
+    for step in steps:
+        feed(printer, step)
+        ledger.update(printer)
+
+
+@pytest.mark.parametrize("together", [False, True])
+async def test_d24_kobra4_retract_before_finished(
+    ledger: FilamentLedger, together: bool
+) -> None:
+    """The idle slot reported ~15 s before ``finished`` is not charged."""
+    printer = make_printer()
+    _run(
+        ledger,
+        printer,
+        _box(3),
+        payloads.info(project=_job(0, progress=1)),
+        payloads.info(project=_job(1500, progress=50)),
+        payloads.info(project=_job(LENGTH, progress=99)),
+    )
+    end = [payloads.info(project=_job(LENGTH, progress=100, **FINISHED))]
+    retract = [_box(0)]
+    # Retracted while the job still reads printing; or both at once.
+    _run(ledger, printer, *(end + retract if together else retract + end))
+    _run(ledger, printer, payloads.info(project=None))
+    assert _used(ledger, LEDGER_PID) == {3: round(grams_from_length(LENGTH, "PLA"), 2)}
+    assert ledger.feeding_slot(LEDGER_PID) is None
+
+
+async def test_d24_the_slot_that_fed_most(ledger: FilamentLedger) -> None:
+    """No per-filament breakdown, two slots: all of it to the larger one."""
+    printer = make_printer()
+    _run(
+        ledger,
+        printer,
+        _box(0),
+        payloads.info(project=_job(0)),
+        payloads.info(project=_job(1000)),
+        _box(2),
+        payloads.info(project=_job(4000)),
+        _box(1),  # retract to another slot
+        payloads.info(project=_job(4000, **FINISHED)),
+    )
+    assert _used(ledger, LEDGER_PID) == {2: round(grams_from_length(4000, "PLA"), 2)}
+
+
+async def test_d24_slot_at_the_end_only_for_a_print_not_seen_feeding(
+    ledger: FilamentLedger,
+) -> None:
+    """Running with no slot known while it fed: the slot loaded at the end."""
+    printer = make_printer()
+    no_slot = payloads.ace(payloads.box(0, slots=[payloads.slot(i) for i in range(4)]))
+    _run(
+        ledger,
+        printer,
+        no_slot,
+        payloads.info(project=_job(LENGTH)),
+        _box(2),
+        payloads.info(project=_job(LENGTH, **FINISHED)),
+    )
+    assert _used(ledger, LEDGER_PID) == {2: round(grams_from_length(LENGTH, "PLA"), 2)}
+
+
+async def test_d24_one_print_never_decides_the_next(ledger: FilamentLedger) -> None:
+    printer = make_printer()
+    no_slot = payloads.ace(payloads.box(0, slots=[payloads.slot(i) for i in range(4)]))
+    first = round(grams_from_length(LENGTH, "PLA"), 2)
+    # A print from slot 4 that fed nothing measurable, then one from slot 4.
+    _run(
+        ledger,
+        printer,
+        _box(3),
+        payloads.info(project=_job(0)),
+        payloads.info(project=None),
+        payloads.info(project=_job(LENGTH)),
+        payloads.info(project=None),
+    )
+    assert ledger.feeding_slot(LEDGER_PID) is None
+    assert _used(ledger, LEDGER_PID) == {3: first}
+    # The next print: nothing says which slot fed it. Not slot 4's.
+    _run(
+        ledger,
+        printer,
+        no_slot,
+        payloads.info(project=_job(0)),
+        payloads.info(project=_job(LENGTH)),
+        payloads.info(project=None),
+    )
+    assert _used(ledger, LEDGER_PID) == {3: first}
+    # The next one from slot 2 is charged to slot 2 only.
+    _run(
+        ledger,
+        printer,
+        payloads.info(project=_job(0)),
+        _box(1),
+        payloads.info(project=_job(LENGTH)),
+        _box(3),
+        payloads.info(project=None),
+    )
+    assert _used(ledger, LEDGER_PID) == {3: first, 1: first}
+
+
+async def test_d24_lan_print_from_slot_4(
+    hass: HomeAssistant, printer: MockPrinter
+) -> None:
+    """The field report end to end: four prints from slot 4, each retracting
+    to slot 1 before ``finished``, all charged to slot 4."""
+    printer.connect_payloads[1] = _box(3)
+    entry = await setup_entry(hass, lan_entry())
+    pid = entry.runtime_data.primary.printer_id
+    for number in range(4):
+        printer.client.feed(_box(3))
+        for usage in (0, 1000, LENGTH):
+            printer.client.feed(
+                payloads.info(project=_job(usage, progress=1 + usage // 31))
+            )
+        printer.client.feed(_box(0))
+        await _settle(hass)
+        printer.client.feed(payloads.info(project=_job(LENGTH, **FINISHED)))
+        printer.client.feed(
+            payloads.info(project=None, last_project={"task_id": "-1", **FINISHED})
+        )
+        await _settle(hass)
+        assert _used(entry.runtime_data.ledger, pid) == {
+            3: pytest.approx((number + 1) * grams_from_length(LENGTH, "PLA"), abs=0.02)
+        }
+
+
+async def test_d24_cloud_job(hass: HomeAssistant, cloud: FakeCloud) -> None:
+    """A cloud job fed from slot 2; the printer reports slot 1 before the
+    job reads finished."""
+    entry = await _cloud(hass)
+    cloud.feed(
+        cp.mqtt(
+            "multiColorBox",
+            "getInfo",
+            "success",
+            {"multi_color_box": [cp.ace_box(0, loaded_slot=0)]},
+        )
+    )
+    await _settle(hass)
+    cloud.jobs[0]["print_status"] = 2
+    await _poll(entry)
+    await _settle(hass)
+    assert _used(entry.runtime_data.ledger, cp.PRINTER_ID) == {
+        1: round(grams_from_length(31783, "PLA"), 2)
+    }
