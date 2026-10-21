@@ -481,6 +481,16 @@ first report, which over the cloud only a pushed `fan` message carries).
   - Holds for cloud jobs too, not only LAN jobs numbered `-1`.
 - 2.x fixes the same fault in 2.9.10. The behaviour above is the whole requirement.
 
+**Fixed in hass-anycubic-next@eee7378.** The ledger charged a single-material print to the slot loaded *when it ended*, and also stored
+any slot seen while the job read printing, the retract included. Now each run books every rise in "filament used" to the slot loaded as
+that rise is reported (the ledger runs on every report). The slot that fed the most is charged, so a slot reported after the last rise
+decides nothing. The slot loaded at the end is used only when the run was never seen feeding. The remembered `feeding_slot` is dropped when
+a run ends, so it can't carry to the next print. LAN and cloud runs are tracked the same way, including cloud jobs with a one-colour
+breakdown. Tests in `tests/test_beta4.py`: `test_d24_kobra4_retract_before_finished` (retract before `finished`, and both together),
+`test_d24_the_slot_that_fed_most`, `test_d24_slot_at_the_end_only_for_a_print_not_seen_feeding`, `test_d24_one_print_never_decides_the_next`,
+`test_d24_lan_print_from_slot_4` (the field report: four LAN prints numbered `-1` from slot 4, each retracting to slot 1 first),
+`test_d24_cloud_job`.
+
 ### Beta 3 in the field — Kobra 4 + ACE 2 Pro, LAN Mode (hass-anycubic #40, 2026-10-21)
 
 - Updated from beta.2 through HACS: every entity came back with the same id and the spool data carried over. The one new entity is
