@@ -464,3 +464,29 @@ entity id unchanged. Tests in `tests/test_beta4.py`: `test_d23_chamber_fan_on_th
 the three new ones included, is seeded as 2.x stores it, with `box_fan_level` on the ACE device; after setup `box_fan_level` is on the
 printer device under the same entity id, and `chamber_temperature` and `ace_humidity` are provided with values (the box fan waits for its
 first report, which over the cloud only a pushed `fan` message carries).
+
+### D24. A finished print is charged to the slot that fed it 🔴
+- **Source.** hass-anycubic #40, 2026-10-21: beta.3 on a Kobra 4 + ACE 2 Pro in LAN Mode, four short single-material LAN prints from
+  ACE slot 4 (PETG). Each was charged once, as D16 asks, but **three of the four went to slot 1**.
+- Observed: at the end of a print the Kobra 4 retracts the filament and reports its idle loaded slot (slot 1) about 15 s **before** it
+  reports `finished`. During those seconds the job still reads printing and "filament used" no longer rises. The one print charged
+  correctly was the one where both reports arrived together. The reporter's own automation, which charges as the print runs to the slot
+  loaded at that moment, got the right slot every time.
+- Expected:
+  - A finished print is charged to the slot that was feeding it **while filament was going through**. A slot reported after the last
+    rise in "filament used" (the retract) doesn't decide where the print is charged.
+  - Where a print without a per-filament breakdown fed from more than one slot, the slot that fed most of it is charged.
+  - The slot loaded at the moment the print ends is only used for a print that Home Assistant didn't watch running.
+  - What one print fed never decides where the next one is charged.
+  - Holds for cloud jobs too, not only LAN jobs numbered `-1`.
+- 2.x fixes the same fault in 2.9.10. The behaviour above is the whole requirement.
+
+### Beta 3 in the field — Kobra 4 + ACE 2 Pro, LAN Mode (hass-anycubic #40, 2026-10-21)
+
+- Updated from beta.2 through HACS: every entity came back with the same id and the spool data carried over. The one new entity is
+  `lan_mode_active` (D18). The firmware reads `1.2.1.3` in the update entity's `installed_version` (D19).
+- **D15/D16 hold on a printer that numbers LAN prints `-1`:** four LAN prints in a row, the same file twice among them, each charged once.
+  The slot was wrong for three of them (D24).
+- **LAN → cloud:** nothing was charged again over 9 minutes in cloud mode; the filament store was byte-for-byte unchanged (D16).
+- **D18:** `lan_mode_active` went `off` about 5 s after the reporter's own port check and stayed off; the printer stayed online through the cloud.
+- LAN printing facts from the same report (paged `listLocal`, plain `.gcode` storage, thumbnails) are in `anycubic-lan` PROTOCOL §7.3.
