@@ -547,3 +547,12 @@ branches, including 2.9.10, which fixes D24 in 2.x. Secret scan.
   - The `ace_humidity` / `secondary_ace_humidity` sensors are unchanged (D22). Nothing else in `box_info` changes.
   - The card and panel don't show humidity today; whatever reads `box_info` must cope with `null`.
 - This is a deliberate change from 2.x. It goes in the release notes, and COMPAT/BEHAVIOUR say so.
+
+**Fixed in hass-anycubic-next@3ce0bc6.** `box_info.humidity` is now the same reading as the `ace_humidity` / `secondary_ace_humidity`
+sensors (drying report, else the box's own) and `null` where they have none; the sensors and the other `box_info` keys are unchanged.
+An explicit `0` after a real reading reads `null` again, as the sensor reads unavailable (D22). Integration only; the card and panel read
+only `box_info.loaded_slot`, and diagnostics do not include it, so `frontend/` is unchanged. COMPAT lists only the attribute names, so
+it needs no note. Tests in `tests/test_beta5.py`: `test_d25_lan_box_that_only_reports_0_reads_null`,
+`test_d25_lan_real_reading_is_shown_and_kept_through_partial_reports`, `test_d25_lan_drying_report_reading_counts`,
+`test_d25_lan_second_ace`, `test_d25_cloud_box_that_only_reports_0_reads_null`, `test_d25_cloud_real_reading_is_shown_and_kept`,
+`test_d25_cloud_second_ace`.
