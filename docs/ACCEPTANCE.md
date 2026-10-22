@@ -556,3 +556,16 @@ it needs no note. Tests in `tests/test_beta5.py`: `test_d25_lan_box_that_only_re
 `test_d25_lan_real_reading_is_shown_and_kept_through_partial_reports`, `test_d25_lan_drying_report_reading_counts`,
 `test_d25_lan_second_ace`, `test_d25_cloud_box_that_only_reports_0_reads_null`, `test_d25_cloud_real_reading_is_shown_and_kept`,
 `test_d25_cloud_second_ace`.
+
+### Beta 5 acceptance — 2026-10-22, `clean/beta5` @ `df61ac4` with `anycubic-lan` 0.1.3 and `anycubic-cloud-client` 0.1.3
+
+**Method.** As for beta 4: the upgrade test over a fresh snapshot of the live install (now 3.0.0b4, 133 entities), Home Assistant
+2026.10.2, the real Kobra S1 in LAN Mode, `--actuate`; similarity and the secret scan.
+
+- The entry loads untouched, no entity id changed, both devices kept, no new entity. **All 130 compared entities match live** in value and
+  unit. The ledger is identical; the light and part fan respond; the log is clean. 61 unavailable/unknown at idle, as in beta 4.
+- **D25 on hardware:** `sensor.anycubic_kobra_s1_ace_spools` → `box_info` reads `"humidity": null` (live beta.4: `0`). The ACE Pro sends
+  `0` (no sensor). Every other key is identical to live.
+- Similarity unchanged (40/12/7); the secret scan found 0 hits in 42 files.
+
+**Result: Beta 5 accepted.** Merged next #12. No library change.
