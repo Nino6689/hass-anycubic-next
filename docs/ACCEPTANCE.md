@@ -500,3 +500,35 @@ breakdown. Tests in `tests/test_beta4.py`: `test_d24_kobra4_retract_before_finis
 - **LAN → cloud:** nothing was charged again over 9 minutes in cloud mode; the filament store was byte-for-byte unchanged (D16).
 - **D18:** `lan_mode_active` went `off` about 5 s after the reporter's own port check and stayed off; the printer stayed online through the cloud.
 - LAN printing facts from the same report (paged `listLocal`, plain `.gcode` storage, thumbnails) are in `anycubic-lan` PROTOCOL §7.3.
+
+### D22 in the field — beta.3, Kobra 4 + ACE 2 Pro, LAN Mode (hass-anycubic #40, 2026-10-22)
+
+- Observed on beta.2 and beta.3: the card's box humidity reads `0` in LAN Mode and real values (27–37 %) over the cloud. 2.9.7 showed real
+  values in LAN Mode too. Over LAN this box sends its humidity on the box itself (`multi_color_box[].humidity`), not in `drying_status`.
+- That is the box-level reading D22 asks for, so beta 4 covers it. The development S1's ACE Pro sends `humidity: 0` over LAN (no
+  sensor), so the positive case rests on the D22 tests and on the reporter.
+- **Open, not for beta 4 (Nino to decide):** the reporter asks for the card's box data to read *unknown* rather than `0` while no
+  humidity has been reported. BEHAVIOUR.md documents `humidity` "reads 0 without a sensor", as in 2.x, so this would be a deliberate
+  change to the card's data.
+
+### Beta 4 acceptance — 2026-10-22, `clean/beta4` @ `db35c50` with `anycubic-lan` @ `5e0c097` and `anycubic-cloud-client` @ `75e5a62`
+
+**Method.** The upgrade test over a fresh snapshot of the live install (3.0.0b3, 133 entities), on Home Assistant 2026.10.2, against the
+real Kobra S1 **in LAN Mode** (beta 3 was accepted in cloud mode), with `--actuate`. Similarity against the excluded trees for all three
+branches, including 2.9.10, which fixes D24 in 2.x. Secret scan.
+
+- The entry loads. Its data, options and version are untouched. No entity id changed or went missing. Both devices are kept.
+- **All 130 compared entities match live exactly in value and unit.** No new entity: the S1 has no chamber sensor (D21) and its ACE Pro
+  reports humidity `0` (D22), so neither sensor is created, as specified.
+- **D23:** `sensor.anycubic_kobra_s1_ace_box_fan_level` ("Chamber Fan Level") and `number.office_anycubic_kobra_s1_set_box_fan_level`
+  ("Set chamber fan level") sit on the printer device with their entity ids unchanged.
+- The light (off/on) and the part fan (20 %, then 0) are reported back over LAN, matching live. The filament ledger is identical. The only
+  warning in the log is Home Assistant's notice for any custom integration.
+- 61 entities read unavailable or unknown at idle, against 54 in beta 3's cloud-mode run. The difference is the cloud-only entities in LAN
+  Mode (D19), and live beta.3 reads the same.
+- Similarity is unchanged: integration 40/12/7 (the error-code table, the density table, import blocks), cloud client 25, `anycubic-lan` 6.
+  D24's ledger shares nothing with 2.9.10. The secret scan found 0 hits in 66 files.
+- **Not verifiable on the development machine:** D21 and D22 with real sensors, and D24 on a printer that retracts before `finished`. These
+  rest on their tests until users confirm them.
+
+**Result: Beta 4 accepted.** Merged: next #11, `anycubic-lan` #4, `anycubic-cloud-client` #5. Library releases and the beta are next.
