@@ -507,7 +507,7 @@ breakdown. Tests in `tests/test_beta4.py`: `test_d24_kobra4_retract_before_finis
   values in LAN Mode too. Over LAN this box sends its humidity on the box itself (`multi_color_box[].humidity`), not in `drying_status`.
 - That is the box-level reading D22 asks for, so beta 4 covers it. The development S1's ACE Pro sends `humidity: 0` over LAN (no
   sensor), so the positive case rests on the D22 tests and on the reporter.
-- **Open, not for beta 4 (Nino to decide):** the reporter asks for the card's box data to read *unknown* rather than `0` while no
+- **Decided 2026-10-22 (Nino): unknown, not 0 → D25 in Beta 5.** Was: the reporter asks for the card's box data to read *unknown* rather than `0` while no
   humidity has been reported. BEHAVIOUR.md documents `humidity` "reads 0 without a sensor", as in 2.x, so this would be a deliberate
   change to the card's data.
 
@@ -532,3 +532,18 @@ branches, including 2.9.10, which fixes D24 in 2.x. Secret scan.
   rest on their tests until users confirm them.
 
 **Result: Beta 4 accepted.** Merged: next #11, `anycubic-lan` #4, `anycubic-cloud-client` #5. Library releases and the beta are next.
+
+## Beta 5 — decisions and field reports from 2026-10-22 (D25)
+
+### D25. The ACE's humidity in `box_info` reads unknown, not 0, until there is a real reading
+- **Source.** hass-anycubic #40 (Kobra 4 + ACE 2 Pro, LAN Mode): the `box_info` attribute's `humidity` read `0` while nothing had been
+  reported. Automations that compare it with a threshold took the box for very dry. Nino decided (2026-10-22) that unknown is right, even
+  though 2.x shows `0` there.
+- Expected:
+  - `box_info.humidity` is **`null`** until the box has reported a non-zero humidity (its own or in a drying report, as D11 and D22
+    read them). A box without a sensor, which only ever sends `0`, stays `null`.
+  - Once a real value has been reported it is shown, and later partial reports keep it, as they keep everything else in the box.
+  - Applies to both ACEs, LAN and cloud alike.
+  - The `ace_humidity` / `secondary_ace_humidity` sensors are unchanged (D22). Nothing else in `box_info` changes.
+  - The card and panel don't show humidity today; whatever reads `box_info` must cope with `null`.
+- This is a deliberate change from 2.x. It goes in the release notes, and COMPAT/BEHAVIOUR say so.

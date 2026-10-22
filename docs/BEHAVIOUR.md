@@ -283,7 +283,7 @@ report; the position comes only in reply to a position query.
 
 | Fact | Value |
 |---|---|
-| Box info block (attribute `box_info`) | `box_id`, `model_id`, `status`, `temperature` (°C), `humidity` (reads 0 without a sensor), `auto_feed` (bool), `loaded_slot` (1-based, or null), `feed_status` (`code`, `type`, `current_status`, `slot` 1-based or null) |
+| Box info block (attribute `box_info`) | `box_id`, `model_id`, `status`, `temperature` (°C), `humidity` (% from the box's own or drying-report reading; **null** while the box has reported no non-zero value, which includes a box without a sensor. 2.x and 3.0 betas 1–4 read 0 there; see ACCEPTANCE D25), `auto_feed` (bool), `loaded_slot` (1-based, or null), `feed_status` (`code`, `type`, `current_status`, `slot` 1-based or null) |
 | Model ids | `40001` = ACE Pro (device model "ACE Pro"); anything else → "ACE". `40002` is reported by another Kobra S1 owner, name unconfirmed (LAN §6.7) |
 | Slot `edit_status` | `0` details read from the spool's tag, `1` typed in by hand, **`2` slot empty** |
 | Slot `status` | `5` = this slot is loaded into the printer; `4` = not loaded; other values are presence states |
