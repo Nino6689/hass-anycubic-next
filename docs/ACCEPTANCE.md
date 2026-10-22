@@ -427,11 +427,24 @@ the same unique ids on the same devices. If 3.0 already behaves as expected, add
 - Expected: a `chamber_temperature` sensor on the printer device, °C, device class temperature. It's created the first time the printer reports a
   non-zero value, and never on a printer that only ever reports `0` or nothing. `0` reads as "no reading", not as 0 °C.
 
+**Fixed in anycubic-cloud-client@ac5f868 and hass-anycubic-next@38e703b.** LAN and cloud MQTT already read `curr_chamber_temp`
+(anycubic-lan `test_tempature_merges_and_chamber_flag`); the cloud record's `parameter.curr_chamber_temp` was not read
+(`PrinterDetail.chamber_temp`, test `test_chamber_temperature_from_the_record`), and there was no entity. Tests in `tests/test_beta4.py`:
+`test_d21_lan_chamber_temperature_on_first_non_zero_reading`, `test_d21_lan_printer_reporting_nothing_gets_no_chamber_sensor`,
+`test_d21_cloud_chamber_temperature_from_the_record_and_mqtt`, `test_d21_cloud_chamber_temperature_from_mqtt_first`.
+
 ### D22. ACE humidity, where the box has a sensor
 - An ACE's own report carries `humidity`. Some boxes send real values (58–84 % have been seen); others send `0`. D11's ACE 2 Pro drying report
   carries it too.
 - Expected: `ace_humidity` on the first ACE and `secondary_ace_humidity` on the second, %, device class humidity. As with D21, each is created on
   the first non-zero reading, and `0` means no sensor. 3.0 already shows humidity in the card's box data; this is the entity.
+
+**Fixed in anycubic-lan@10fd1a0 and hass-anycubic-next@38e703b.** The cloud record already carried the box's `humidity`
+(anycubic-cloud-client `test_ace_humidity_from_the_record`); the LAN parser, which also reads the cloud's pushed box reports, dropped it
+(`AceBox.humidity`, tests `test_box_humidity_is_read`, `test_box_humidity_of_two_boxes_and_a_partial_report`), and there was no
+entity. A non-zero drying-report humidity (D11) counts too and is preferred, as in the card's box data. Tests in `tests/test_beta4.py`:
+`test_d22_lan_ace_humidity_on_first_non_zero_reading`, `test_d22_lan_drying_report_humidity_creates_the_sensor`,
+`test_d22_cloud_ace_humidity`, `test_d22_cloud_record_humidity_at_setup`.
 
 ### D23. The box fan is the printer's enclosure fan
 - On the development Kobra S1 on 2026-10-19, `box_fan_level` went to 60, then 80, during a print (08:10–08:18 UTC) while the ACE never dried. It
@@ -439,8 +452,18 @@ the same unique ids on the same devices. If 3.0 already behaves as expected, add
 - Expected: `box_fan_level` sits on the **printer** device, named "Chamber Fan Level". Its unique id doesn't change, so an existing entity keeps
   its entity id and only changes device. The `set_box_fan_level` number is named "Set chamber fan level". The sensor is created when the
   printer first reports the value, so a printer that never reports it gets no entity. A second ACE doesn't get a copy.
+
+**Fixed in hass-anycubic-next@38e703b.** The sensor sat on the first ACE and was created with it. It is now on the printer, created once
+`box_fan_level` is reported; a registry entry 2.x left on the ACE is moved to the printer device at setup, before any reading, with its
+entity id unchanged. Tests in `tests/test_beta4.py`: `test_d23_chamber_fan_on_the_printer`, `test_d23_chamber_fan_created_when_first_reported`,
+`test_d23_existing_box_fan_moves_to_the_printer`.
 - Upgrade check: from a 2.9.9 install, `box_fan_level` re-attaches to the printer device and `chamber_temperature`/`ace_humidity` re-attach
   wherever 2.9.9 had created them.
+
+**Fixed in hass-anycubic-next@38e703b — test `test_2x_cloud_entry_upgrade`** (`tests/test_cloud_upgrade.py`): every COMPAT §3.1 row,
+the three new ones included, is seeded as 2.x stores it, with `box_fan_level` on the ACE device; after setup `box_fan_level` is on the
+printer device under the same entity id, and `chamber_temperature` and `ace_humidity` are provided with values (the box fan waits for its
+first report, which over the cloud only a pushed `fan` message carries).
 
 ### D24. A finished print is charged to the slot that fed it 🔴
 - **Source.** hass-anycubic #40, 2026-10-21: beta.3 on a Kobra 4 + ACE 2 Pro in LAN Mode, four short single-material LAN prints from
@@ -457,6 +480,16 @@ the same unique ids on the same devices. If 3.0 already behaves as expected, add
   - What one print fed never decides where the next one is charged.
   - Holds for cloud jobs too, not only LAN jobs numbered `-1`.
 - 2.x fixes the same fault in 2.9.10. The behaviour above is the whole requirement.
+
+**Fixed in hass-anycubic-next@eee7378.** The ledger charged a single-material print to the slot loaded *when it ended*, and also stored
+any slot seen while the job read printing, the retract included. Now each run books every rise in "filament used" to the slot loaded as
+that rise is reported (the ledger runs on every report). The slot that fed the most is charged, so a slot reported after the last rise
+decides nothing. The slot loaded at the end is used only when the run was never seen feeding. The remembered `feeding_slot` is dropped when
+a run ends, so it can't carry to the next print. LAN and cloud runs are tracked the same way, including cloud jobs with a one-colour
+breakdown. Tests in `tests/test_beta4.py`: `test_d24_kobra4_retract_before_finished` (retract before `finished`, and both together),
+`test_d24_the_slot_that_fed_most`, `test_d24_slot_at_the_end_only_for_a_print_not_seen_feeding`, `test_d24_one_print_never_decides_the_next`,
+`test_d24_lan_print_from_slot_4` (the field report: four LAN prints numbered `-1` from slot 4, each retracting to slot 1 first),
+`test_d24_cloud_job`.
 
 ### Beta 3 in the field — Kobra 4 + ACE 2 Pro, LAN Mode (hass-anycubic #40, 2026-10-21)
 

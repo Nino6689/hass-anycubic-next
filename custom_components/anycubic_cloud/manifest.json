@@ -38,5 +38,5 @@
     "anycubic-cloud-client==0.1.2",
     "anycubic-lan==0.1.2"
   ],
-  "version": "3.0.0b3"
+  "version": "3.0.0b4"
 }

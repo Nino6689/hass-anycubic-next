@@ -46,6 +46,10 @@ CLOUD_ONLY = {
     "multi_color_box_fw_version": "off",
 }
 
+# Created when the printer first reports it (Beta 4, D23): over the cloud
+# only a pushed ``fan`` report carries it, and MQTT is off here.
+REPORTED_LATER = {"box_fan_level"}
+
 LEDGER = {
     "printers": {
         PID: {
@@ -126,6 +130,15 @@ async def test_2x_cloud_entry_upgrade(
             "auth_mode": 3,
         },
     )
+    # Readings 2.9.9 created entities for (Beta 4, D21, D22): the ACE's
+    # humidity is non-zero in the record already.
+    cloud.printers[cp.PRINTER_ID] = cp.detail(
+        parameter={
+            "curr_hotbed_temp": 28,
+            "curr_nozzle_temp": 31,
+            "curr_chamber_temp": 32,
+        }
+    )
     ledger_key = f"anycubic_cloud.filament.{entry.entry_id}"
     _seed_store(hass_storage, ledger_key, LEDGER)
 
@@ -156,6 +169,8 @@ async def test_2x_cloud_entry_upgrade(
             config_entry=entry,
             suggested_object_id=f"2x_{key}",
             disabled_by=None if enabled else er.RegistryEntryDisabler.INTEGRATION,
+            # 2.x put the box fan on the ACE (Beta 4, D23).
+            device_id=ace_device.id if key == "box_fan_level" else None,
         )
         seeded[key] = (item.entity_id, enabled)
 
@@ -177,6 +192,8 @@ async def test_2x_cloud_entry_upgrade(
         assert item.entity_id == entity_id, key
         if not enabled:
             assert item.disabled_by is er.RegistryEntryDisabler.INTEGRATION, key
+            continue
+        if key in REPORTED_LATER:
             continue
         state = hass.states.get(entity_id)
         assert state is not None, key
@@ -204,6 +221,13 @@ async def test_2x_cloud_entry_upgrade(
     assert ace.id == ace_device.id
     assert ace.via_device_id == printer.id
     assert ace.model == "ACE Pro"
+    # The box fan now sits on the printer, under the same entity id (D23);
+    # chamber temperature and ACE humidity re-attach with values (D21, D22).
+    fan = by_unique_id[f"{payloads.MAC_UID}-box_fan_level"]
+    assert fan.device_id == printer.id
+    assert hass.states.get(seeded["chamber_temperature"][0]).state == "32.0"
+    assert hass.states.get(seeded["ace_humidity"][0]).state == "12.0"
+    assert by_unique_id[f"{payloads.MAC_UID}-ace_humidity"].device_id == ace.id
 
     # The token store was used (no fresh exchange) and is kept.
     assert cloud.clients[0].user_token == "2x-user-token"
