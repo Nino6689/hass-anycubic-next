@@ -569,3 +569,96 @@ it needs no note. Tests in `tests/test_beta5.py`: `test_d25_lan_box_that_only_re
 - Similarity unchanged (40/12/7); the secret scan found 0 hits in 42 files.
 
 **Result: Beta 5 accepted.** Merged next #12. No library change.
+
+## Beta 6 — field reports from 2026-10-27 to 2026-11-10 (D26–D32)
+
+Nino asked (2026-11-14) for every open report and request to be done and released. 2.x shipped the same behaviour in 2.9.11; these
+items state it as behaviour only.
+
+### D26. A slice-parameter reply is read, not reported as an error
+- **Source.** hass-anycubic #48 (Kobra 3, cloud): a cloud MQTT `print` report with `action` `getSliceParam`, `state` `done`, `code` 200
+  and `data` `{"ams_settings": {"use_ams": true}, "file_key": "<hex>", "slice_param": {…}, "taskid": "<n>"}` was logged as an error.
+  `slice_param` holds `bed_temperature`, `brim_type`, `filament_retract_length`, `filament_type` (seen as `";PLA"`, with a stray `;`),
+  `fill_density`, `layer_height`, `paint_infos` (list of `{filament_used, material_type, paint_color [r,g,b], paint_index}`),
+  `perimeter_*`, `printer_settings_id`, `remain_time`, `size_x/y/z`, `support_material_auto`, `temperature`, `travel_*`.
+- Expected: the reply is accepted silently (no error or warning in the log, at most debug). Its `paint_infos` are used for the running
+  job wherever the job's per-material breakdown is used (D29). Unknown keys inside `slice_param` are ignored, never an error.
+
+### D27. The cloud camera over Amazon Kinesis Video (second transport) 🔴
+- **Source.** hass-anycubic #49: for some accounts the camera-open order returns no `shengwang` block, only
+  `data.token` = `{"region": "eu-west-3", "tmpSecretId": "ASIA…", "tmpSecretKey": "…", "sessionToken": "…", "expiration": <int>}`.
+  The printer starts pushing all the same (D28). Today that reads as "no camera credentials".
+- Anycubic Slicer Next views these with the Kinesis Video Streams WebRTC SDK as a **VIEWER** on the signalling channel whose
+  **name is the printer's `key`**, the printer being MASTER. The four token fields are temporary AWS credentials
+  (access key id, secret, session token) for that region. This is the public KVS WebRTC protocol:
+  1. `POST https://kinesisvideo.<region>.amazonaws.com/describeSignalingChannel` `{"ChannelName": <key>}` → `ChannelInfo.ChannelARN`.
+  2. `POST …/getSignalingChannelEndpoint` `{"ChannelARN", "SingleMasterChannelEndpointConfiguration": {"Protocols": ["WSS","HTTPS"],
+     "Role": "VIEWER"}}` → the `WSS` `ResourceEndpoint`.
+  3. Connect to that endpoint with a SigV4-presigned URL (service `kinesisvideo`, query `X-Amz-ChannelARN` and `X-Amz-ClientId`, only
+     `host` signed, session token in the query before signing, `X-Amz-Expires` 299). Both POSTs are SigV4-signed JSON.
+  4. Send `{"action": "SDP_OFFER", "messagePayload": base64(JSON {"type": "offer", "sdp": …})}`. The printer replies
+     `{"messageType": "SDP_ANSWER", "messagePayload": base64(JSON {"type": "answer", "sdp": …})}` and then trickles
+     `ICE_CANDIDATE` messages (payload base64 JSON `{candidate, sdpMid, sdpMLineIndex}`). Send the browser's candidates the same way.
+     `STATUS_RESPONSE` with an `errorType` or non-200 `statusCode` is an error; empty frames are keep-alives.
+- Expected:
+  - When the order returns a `shengwang` block, Agora is used exactly as today, even if `token` is also present (Nino's account gets both).
+  - When it returns only a complete `token` block, the cloud camera streams over KVS: Home Assistant brokers signalling only (offer out,
+    answer and the printer's candidates back to the browser, browser candidates out); no video passes through Home Assistant.
+  - An incomplete `token` block (any of the four missing) counts as no credentials. No re-login retry when a usable block came back.
+  - The offer waits for the printer's `pushStarted` (D28) for up to a few seconds, then goes anyway. With no answer it is resent, only
+    while no answer at all has come back, a small number of times, then the stream fails with a clear message.
+  - `initFailed` / `pushFailed` from the printer fails the stream with that state named. AWS refusing (e.g. expired token) fails with
+    AWS's message. Credentials never appear in logs, errors or diagnostics.
+  - With neither block, the error says so honestly (it no longer implies a session conflict when credentials did come back).
+- Untested on hardware here: Nino's printer is in LAN Mode (off the account). The #49 reporter (@dimennar) offered to test.
+
+### D28. The printer's video reports are read
+- **Source.** #49: cloud MQTT `video` reports, `action` `startCapture`, `state` `initSuccess` → `pushStarted` (code 200), also
+  `pushStopped`, `pushFailed`, `initFailed`, `data` null. Logged as an unknown update today.
+- Expected: accepted silently; the latest state is kept per printer for D27 and reset when a new camera-open order is sent.
+
+### D29. A multi-colour job's filament goes to the slot holding each colour 🔴
+- **Source.** hass-anycubic #47 (Kobra S1 + ACE 2 Pro, cloud): slot 3 read 0 g remaining while the ACE's screen showed plenty.
+  Answers V2 in BEHAVIOUR: `paint_index` is the material's position in the slicer's list, **not** the ACE slot; it only matches when the
+  file's colours happen to sit in slot order.
+- Expected, for a job with two or more materials in its breakdown (BEHAVIOUR §3.5):
+  - Each material is charged to the ACE slot whose colour `[r,g,b]` equals its `paint_color` exactly and whose material matches
+    `material_type` (case-insensitive, ignoring a stray `;`/spaces; an unnamed material on either side matches any). Empty slots
+    (`edit_status` 2) are not candidates.
+  - Two slots with the same colour and material: the one whose index equals `paint_index` wins if it is among them.
+  - Only if **every** material maps to exactly one slot and no two materials share a slot is the mapping used. Otherwise the job is
+    split by `paint_index` as today. Single-material jobs are unchanged (the slot that fed it, D24).
+
+### D30. Kobra X filament boxes: the feeder is box 0, the ACE comes after
+- **Source.** hass-anycubic #33 (Kobra X + ACE 2 Pro, 7-channel layout): the panel's **top row (box 0) is the Kobra X's own feeder, the
+  bottom row (box 1) the ACE 2 Pro**. Filament changes arrive as print `start` steps: `extfilbox_filament_feeding` with `channel_no`
+  and no `unit_no` (the printer's feeder), `ace_filament_feeding` with `channel_no` and `unit_no` 1 (the ACE). Nothing lights up today.
+  The reporter also saw "two ACE devices, both active".
+- Expected, on a Kobra X (model 20030) with more than one box:
+  - `extfilbox_filament_feeding` channel N marks slot N of box 0; `ace_filament_feeding` with `unit_no` U marks slot N of box U.
+    A progress update with `channel_no` but no `unit_no` still guesses nothing on a multi-box Kobra X.
+  - Box 0's device is named `<printer> Feeder`, model `Built-in feeder`, not an ACE. The ACE behind it is named by its model with no
+    " 2" suffix. Device identifiers don't change (no entity moves).
+- Everywhere: ACE `model_id` **40002 is "ACE 2 Pro"** (hass-anycubic #41).
+- Everywhere: a device the integration no longer reports (printer gone from the account, replaced mainboard, ACE unplugged) can be
+  deleted from Home Assistant's device page; a reported printer or box cannot.
+
+### D31. Electricity per print (discussion #46)
+- **Source.** hass-anycubic discussion #46: users with a metering smart plug want each job's electricity cost next to its filament cost.
+- Expected:
+  - An options step "Energy and electricity cost": an energy sensor (device class energy), a fixed price per kWh (0 = not set) and an
+    optional price entity (sensor / input_number / number). The price entity wins whenever it reads a number. Clearing the sensor
+    switches the feature off.
+  - Each rise of the meter while **exactly one** printer on the entry is printing is added to that job, priced at the price in force at
+    that reading. Wh/kWh/MWh are converted; a drop, a non-number or a jump over 5 kWh is ignored. Kept across a restart mid-print.
+  - When the job is no longer in progress its totals become the last job's.
+  - Sensors (created once they have a value, so installs without a meter get none): `job_energy` (kWh, so far; 0 from the job's start),
+    `job_electricity_cost` (so far; 0 from the start when a price is set), `last_job_energy`, `last_job_electricity_cost`,
+    `last_job_total_cost` (filament cost + electricity cost of the last job, whichever are known). Monetary ones in Home Assistant's
+    currency, no state class. No price → costs unknown, never 0.
+  - Translations for every language the beta ships.
+
+### D32. The card's drying bar fills as drying goes on
+- **Source.** #33: seven minutes into a six-hour dry the card's drying bar was nearly full; it showed time remaining as the fill.
+- Expected: the card's drying progress is elapsed / total (clamped 0–100 %), like the print bar and the panel. The text stays the minutes
+  remaining.
