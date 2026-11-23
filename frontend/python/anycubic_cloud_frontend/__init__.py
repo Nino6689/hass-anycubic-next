@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-__version__ = "1.0.0b3"
+__version__ = "1.0.0b4"
 
 WEBCOMPONENT_NAME = "anycubic-cloud-panel"
 

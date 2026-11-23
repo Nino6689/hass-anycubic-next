@@ -265,3 +265,80 @@ tracks only the first ACE's slots, so §3.5's split drops colours with a
 `paint_index` of 4 or more: their grams reach no slot, and no totals, cost or
 nozzle wear. Should those grams still be booked in the totals, cost (unpriced)
 and nozzle wear, without a slot? Until answered they are dropped, as in 2.x.
+
+## Beta 6 — D26–D32 (implementation team, 2026-11-23)
+
+Interim choices are in place; each can change without touching stored data.
+
+**B6-Q1. D26: a `getSliceParam` reply for another task.** The reply names
+its task (`taskid`). **Interim choice** (`model.Printer.job_paints`): its
+breakdown is used only while the running job has that number; a reply that
+names no task is bound to the job running when it arrives (never a later
+one). The job record's own `paint_infos` win whenever they are present.
+Confirm.
+
+**B6-Q2. D27: timings.** "Up to a few seconds" and "a small number of
+times" are not given as numbers. **Interim choice**
+(`anycubic_cloud_client.kinesis`): the offer waits up to 5 s for
+`pushStarted`, each offer waits 5 s for an answer, and the offer goes out
+3 times in all before the stream fails. Confirm or give the numbers.
+
+**B6-Q3. D27: re-login on an incomplete `token` block, and the wording.**
+An incomplete block "counts as no credentials", so with a slicer access
+token the client forces a fresh login and sends the order once more, as it
+does with no block at all. When a block came back incomplete the error says
+so ("incomplete credentials"); only when neither block came back does it
+still mention another Anycubic session. Confirm.
+
+**B6-Q4. D27: TURN servers.** The KVS signalling also offers TURN servers
+(`GetIceServerConfig` on the HTTPS endpoint); D27 does not mention them and
+they are not fetched. The browser uses Home Assistant's own ICE servers
+(STUN), so a viewer and printer both behind strict NATs may not connect.
+Should the integration fetch the channel's TURN servers and hand them to the
+browser (`async_get_webrtc_client_configuration`)?
+
+**B6-Q5. D29: which slots, and when.** **Interim choice** (`ledger.py`,
+`model.paint_slot_map`): first ACE only (BEHAVIOUR §3.1); the match is made
+while the job runs, against the slots as reported then, and the last match
+seen is used at the end (a reel swapped after the print ends does not move
+the charge). A colour of a paint with no `paint_color` means no match.
+Confirm.
+
+**B6-Q6. D30: `current_filament` on a Kobra X with an ACE.** D30 names the
+two feeding steps only. `extfilbox`/`auto` `current_filament` `"<box>-<slot>"`
+still changes nothing on a multi-box Kobra X (as before Beta 6), although
+counting box 0 as the feeder would agree with D30. Should it select box
+`<box>`? Also: an existing install's ACE device is renamed to
+`<printer> Feeder` / `<printer> ACE 2 Pro` on the next start (entity ids and
+identifiers do not change; a name the user set is kept). Confirm that the
+rename is wanted for existing installs.
+
+**B6-Q7. D31: open details.** **Interim choices** (`energy.py`, `sensor.py`):
+- The job's electricity cost is known only if a price was in force at the
+  job's start and at every booked reading; otherwise it is unknown for the
+  whole job, never a partial sum.
+- A drop or a jump over 5 kWh is not booked, and the new reading becomes the
+  base for the next rise (a meter reset then counts from its new value). A
+  meter unit other than Wh/kWh/MWh is treated as a non-number.
+- `job_energy` and `job_electricity_cost` read unavailable while no job is
+  in progress (the "so far" figure has no job). The energy sensors have no
+  state class either.
+- "Exactly one printer printing" counts only printers whose state has been
+  read since setup.
+- A negative number from the price entity is used as is (a credit), since
+  the entity wins "whenever it reads a number"; the fixed price is 0 or more.
+- Changing the energy sensor starts from the new meter's own reading.
+- `last_job_total_cost` exists only with a meter configured; it adds the
+  ledger's last filament cost and the meter's last electricity cost, which
+  are the same job except right after upgrading.
+- Stored in a new store of its own, `anycubic_cloud.energy.<entry id>`,
+  so the ledger's 2.x shape (COMPAT §6) is untouched. It is not removed with
+  the entry, like the ledger.
+- Translations: the integration ships English only, so only `en.json`.
+
+**B6-Q8. D32 and the panel's drying figure.** D32 says the card's bar should
+fill "like the print bar and the panel". FRONTEND.md (panel ACE group) says
+the panel's drying progress is the elapsed share, but the panel code shows
+the remaining share (DECISIONS frontend 9 "time remaining on both").
+**Interim choice**: only the card changed (`dryingElapsedPercent`); the panel
+is untouched. Should the panel's figure become the elapsed share too?

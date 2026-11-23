@@ -30,7 +30,7 @@ import {
   NO_VALUE,
   clampPercent,
   computeEta,
-  dryingRemainingPercent,
+  dryingElapsedPercent,
   formatDuration,
   formatEta,
   formatGrams,
@@ -241,7 +241,8 @@ export class AnycubicCard extends LitElement {
       }
       case "Dry Time": {
         const rem = p.num("dry_status_remaining_time");
-        const pct = dryingRemainingPercent(rem, p.num("dry_status_total_duration"));
+        // The bar fills as drying goes on; the text stays the time left (D32).
+        const pct = dryingElapsedPercent(rem, p.num("dry_status_total_duration"));
         if (rem === undefined) return NO_VALUE;
         return html`<span class="dry-time">
           <span>${Math.round(rem)} ${this.t("common.values.minutes")}</span>

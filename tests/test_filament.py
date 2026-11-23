@@ -126,7 +126,7 @@ def test_model_helpers() -> None:
     assert material_type_from_device_type("laser") == "laser"
     assert material_type_from_device_type(None) is None
     assert ace_model_name(40001) == "ACE Pro"
-    assert ace_model_name(40002) == "ACE"
+    assert ace_model_name(40002) == "ACE 2 Pro"  # Beta 6, D30
     assert ace_model_name(None) == "ACE"
     assert ace_model_name(49999) == "ACE"
 

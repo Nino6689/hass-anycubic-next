@@ -584,6 +584,12 @@ items state it as behaviour only.
 - Expected: the reply is accepted silently (no error or warning in the log, at most debug). Its `paint_infos` are used for the running
   job wherever the job's per-material breakdown is used (D29). Unknown keys inside `slice_param` are ignored, never an error.
 
+**Fixed in hass-anycubic-next@f581ab8** with anycubic-cloud-client 0.1.4 (`clean/beta6`). D26 needed no library change: the
+library already parsed the reply; the integration now keeps its `paint_infos` (`CloudData.slice_param`, task-checked) and
+`Printer.job_paints` uses them when the job record's slice data has none. Tests: library `tests/test_beta6.py::test_slice_param_reply_is_read_quietly`;
+integration `test_d26_slice_param_reply_is_quiet`, `test_d26_reply_for_another_task_is_not_this_job`,
+`test_d26_the_jobs_own_breakdown_wins`, `test_d26_d29_pushed_breakdown_charges_by_colour`. Open: B6-Q1.
+
 ### D27. The cloud camera over Amazon Kinesis Video (second transport) 🔴
 - **Source.** hass-anycubic #49: for some accounts the camera-open order returns no `shengwang` block, only
   `data.token` = `{"region": "eu-west-3", "tmpSecretId": "ASIA…", "tmpSecretKey": "…", "sessionToken": "…", "expiration": <int>}`.
@@ -612,10 +618,26 @@ items state it as behaviour only.
   - With neither block, the error says so honestly (it no longer implies a session conflict when credentials did come back).
 - Untested on hardware here: Nino's printer is in LAN Mode (off the account). The #49 reporter (@dimennar) offered to test.
 
+**Fixed in hass-anycubic-next@f581ab8** with anycubic-cloud-client 0.1.4 (`clean/beta6`): `sigv4.py` (header and presigned
+SigV4) and `kinesis.py` (`KinesisViewerSession`: describe channel, VIEWER endpoint, presigned websocket with `X-Amz-ChannelARN`,
+`X-Amz-ClientId`, the token before signing and 299 s, offer after `pushStarted` or 5 s, resent while unanswered up to 3 times, trickle
+ICE both ways, `STATUS_RESPONSE` errors, `initFailed`/`pushFailed`, AWS's own message with any credential scrubbed);
+`open_camera_stream` returns Agora credentials when a `shengwang` block is present, else `KinesisCredentials` from a complete `token`
+block. The integration's `cloud_camera` brokers the signalling (answer and printer candidates to the browser as they arrive).
+Tests: library `test_sigv4_*` (AWS's `get-vanilla`, IAM `ListUsers` and S3 presigned examples), `test_presigned_signalling_url`, the
+camera-order tests and the fake-websocket flow (`test_full_signalling_flow`, `test_offer_resent_while_unanswered_then_fails`,
+`test_printer_failure_fails_the_stream`, `test_status_response_error`, `test_aws_refusal_is_aws_message` and others); integration
+`test_d27_*`. Open: B6-Q2, B6-Q3, B6-Q4.
+
 ### D28. The printer's video reports are read
 - **Source.** #49: cloud MQTT `video` reports, `action` `startCapture`, `state` `initSuccess` → `pushStarted` (code 200), also
   `pushStopped`, `pushFailed`, `initFailed`, `data` null. Logged as an unknown update today.
 - Expected: accepted silently; the latest state is kept per printer for D27 and reset when a new camera-open order is sent.
+
+**Fixed in hass-anycubic-next@f581ab8** with anycubic-cloud-client 0.1.4: `video`/`startCapture` reports parse as `VideoUpdate`
+(understood, debug-only); the integration keeps `CloudData.video_state`, resets it before each camera order and passes each state to
+a running Kinesis session. Tests: library `test_video_reports`, `test_unknown_video_report`; integration `test_d28_video_reports_are_quiet`,
+`test_d27_token_only_streams_over_kinesis`.
 
 ### D29. A multi-colour job's filament goes to the slot holding each colour 🔴
 - **Source.** hass-anycubic #47 (Kobra S1 + ACE 2 Pro, cloud): slot 3 read 0 g remaining while the ACE's screen showed plenty.
@@ -628,6 +650,12 @@ items state it as behaviour only.
   - Two slots with the same colour and material: the one whose index equals `paint_index` wins if it is among them.
   - Only if **every** material maps to exactly one slot and no two materials share a slot is the mapping used. Otherwise the job is
     split by `paint_index` as today. Single-material jobs are unchanged (the slot that fed it, D24).
+
+**Fixed in hass-anycubic-next@f581ab8.** `model.paint_slot_map` matches each material with filament to the first ACE's
+non-empty slot of the exact colour and a loosely matching material (`paint_index` breaks a tie among its candidates) and returns a
+mapping only when it is one-to-one; the ledger takes it while the job runs and charges by it, otherwise splits by `paint_index`
+as before. Single-material jobs are unchanged. Tests: `test_d29_slot_map` (13 cases), `test_d29_job_charged_to_the_slots_holding_its_colours`,
+`test_d29_no_clean_match_splits_by_paint_index`, `test_d29_single_material_job_unchanged`. Open: B6-Q5.
 
 ### D30. Kobra X filament boxes: the feeder is box 0, the ACE comes after
 - **Source.** hass-anycubic #33 (Kobra X + ACE 2 Pro, 7-channel layout): the panel's **top row (box 0) is the Kobra X's own feeder, the
@@ -642,6 +670,14 @@ items state it as behaviour only.
 - Everywhere: ACE `model_id` **40002 is "ACE 2 Pro"** (hass-anycubic #41).
 - Everywhere: a device the integration no longer reports (printer gone from the account, replaced mainboard, ACE unplugged) can be
   deleted from Home Assistant's device page; a reported printer or box cannot.
+
+**Fixed in hass-anycubic-next@f581ab8.** `box_and_slot_for_feed`: on a Kobra X with more than one box the feeder's step names box 0
+and an ACE step with `unit_no` U names box U; an untagged channel names none. Box 0's device is `<printer> Feeder` / `Built-in feeder`,
+box 1's `<printer> <model>`; identifiers unchanged. `40002` → `ACE 2 Pro`. `async_remove_config_entry_device` allows deleting a device
+whose identifiers the entry no longer reports (a printer the cloud reports deleted counts as not reported). Tests:
+`test_d30_feeder_and_ace_devices`, `test_d30_feeding_steps_mark_their_box`, `test_d30_ace_2_pro_everywhere`,
+`test_d30_only_devices_no_longer_reported_can_be_deleted`, `test_d30_nothing_deleted_while_not_running`, and the updated
+`test_d10_box_mapping` rows. Open: B6-Q6.
 
 ### D31. Electricity per print (discussion #46)
 - **Source.** hass-anycubic discussion #46: users with a metering smart plug want each job's electricity cost next to its filament cost.
@@ -658,7 +694,18 @@ items state it as behaviour only.
     currency, no state class. No price → costs unknown, never 0.
   - Translations for every language the beta ships.
 
+**Fixed in hass-anycubic-next@f581ab8.** Options step `energy` ("Energy and electricity cost": `energy_sensor`,
+`energy_price_per_kwh`, `energy_price_entity`); `energy.py` books each meter rise to the one printing job at the price in force,
+converts Wh/MWh, ignores drops, non-numbers and jumps over 5 kWh, keeps the job across a restart (store `anycubic_cloud.energy.<entry>`)
+and moves it to the last job when it ends. Sensors `job_energy`, `job_electricity_cost`, `last_job_energy`,
+`last_job_electricity_cost`, `last_job_total_cost`, created once they have a value; costs in Home Assistant's currency, no state
+class, unknown without a price. English strings (the only language shipped). Tests: `test_d31_*`. Open: B6-Q7.
+
 ### D32. The card's drying bar fills as drying goes on
 - **Source.** #33: seven minutes into a six-hour dry the card's drying bar was nearly full; it showed time remaining as the fill.
 - Expected: the card's drying progress is elapsed / total (clamped 0–100 %), like the print bar and the panel. The text stays the minutes
   remaining.
+
+**Fixed in hass-anycubic-next@f581ab8.** The card's Dry Time bar is `dryingElapsedPercent` (elapsed ÷ total, clamped); the text is still
+the minutes left. Frontend `1.0.0-beta.4` (Python package `1.0.0b4`). Test: `frontend/tests/format.test.ts` "drying elapsed share
+fills the card's bar (D32)". Open: B6-Q8 (the panel's figure).
