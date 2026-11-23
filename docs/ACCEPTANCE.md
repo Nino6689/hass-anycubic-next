@@ -709,3 +709,58 @@ class, unknown without a price. English strings (the only language shipped). Tes
 **Fixed in hass-anycubic-next@f581ab8.** The card's Dry Time bar is `dryingElapsedPercent` (elapsed ÷ total, clamped); the text is still
 the minutes left. Frontend `1.0.0-beta.4` (Python package `1.0.0b4`). Test: `frontend/tests/format.test.ts` "drying elapsed share
 fills the card's bar (D32)". Open: B6-Q8 (the panel's figure).
+
+### Beta 6 acceptance — 2026-11-23, `clean/beta6` @ `6651f14` with `anycubic-lan` 0.1.3 and `anycubic-cloud-client` `clean/beta6` @ `ae5ccdd` (0.1.4)
+
+**Method.** The upgrade test over a fresh snapshot of the live install (3.0.0b5, 145 entities), Home Assistant 2026.10.2, the real Kobra S1
+in LAN Mode, for 30 minutes; then the same run directory restarted. A two-colour job was sliced for the test (two 15 × 15 × 1.2 mm cubes,
+PLA `#2196F3` → ACE slot 1, PLA `#F0F0ED` → ACE slot 2; 3.36 g, 6 colour changes) and started over LAN by URL with both slots mapped.
+D31 used the house's printer plug (`sensor.3d_printer_energy`) mirrored into the test instance, at 0.25 per kWh. Similarity and the secret
+scan on the final commits of both repositories.
+
+- The entry loads; data unchanged; options changed only by the energy step set during the test. No entity id changed, the three devices are
+  kept. **All 117 compared entities match live** in value and unit. The log is clean. Saving the energy options reloaded the entry mid-print;
+  it was back, still printing, within 5 s.
+- **D31:** the options step and its two "so far" sensors appear as specified, and `last_job_*` are set when the job ends. On this house the
+  plug's energy sensor only updates about every 30 minutes (17:50, 18:04, 18:34), so the first job fell entirely between two readings
+  (0 kWh booked, the 59 Wh arriving a minute after the job ended), and the second booked 0.001 kWh. That is the specified behaviour; the
+  release notes tell users to use a plug that updates every minute or two.
+- **D29 not exercised on hardware.** A job started over LAN carries no per-material breakdown, so D29's matching (which needs one, from the
+  cloud) never runs. The 3.36 g job was charged **3.6 g, all to slot 1** (slot 2 unchanged); live 3.0.0b5 did the same with both runs. This
+  is not a regression (see "LAN multi-colour" below). D29's cloud path stands on its tests.
+- **A Home Assistant restart across the end of a job charges nothing.** The first run's Home Assistant stopped at 18:33:50; the printer
+  reached 100 % at 18:32:52 and reported `free` by 18:34:43. After the restart the job read `idle` and no filament was charged. (2.x has the
+  same gap for LAN jobs.) Recorded for a later beta, not blocking.
+- D26–D28 and D30 are not reachable from a LAN-Mode S1 with one ACE; they stand on their tests. D32 is the card's formula; tested in
+  `frontend/tests`.
+- Similarity unchanged (integration 40/12/7; cloud client 25/23/6); the new `energy.py`, `kinesis.py` and `sigv4.py` have no run above 4
+  lines. The secret scan found 0 hits in 188 files.
+
+**Result: Beta 6 accepted.** Merged next #13 and anycubic-cloud-client #6; `anycubic-cloud-client` 0.1.4 released.
+
+## Beta 7 — feature requests and findings (D33–D34)
+
+### D33. Grams used per ACE slot, for Spoolman
+- **Source.** hass-anycubic #31 (Kobra S1 + ACE Pro, Spoolman user); in 2.x on `dev` for 2.9.12.
+- Wanted: each slot's reel usage as its own sensor, so an automation can note it when a print starts and book the difference against
+  the spool in Spoolman when it ends.
+- Expected:
+  - Alongside every `…ace_slot_N_filament_remaining` sensor 3.0 creates, a sensor with key `…ace_slot_N_filament_used` (same
+    prefix and device as its `filament_remaining` sibling; unique id built the same way as every other entity, per COMPAT).
+    English name `ACE slot N filament used`; named in every language the beta ships.
+  - State: the slot's `filament_used_g` from the filament store (COMPAT §6), rounded to 0.1 g. Unit grams, device class weight,
+    state class **total increasing**, display precision 1. Disabled by default, like the other per-spool entities.
+  - It is the same counter `filament_remaining` is worked out from, so `spool weight − filament used = filament remaining` holds
+    whenever both have a value.
+  - Unknown (not 0) when the slot is empty (`edit_status` 2), exactly when `filament_remaining` is unknown.
+  - It moves only when a finished or cancelled job is charged to the slot (one step, never during a print); it returns to 0 when the
+    slot gets a different reel or on `reset_spool`, and to the remembered total when a known reel is put back.
+- Not a change: no existing entity, unique id, store key or state moves.
+
+### D34. A multi-colour job started over LAN is charged to one slot (finding, spec to follow)
+- **Observed** in the Beta 6 acceptance above: a two-colour LAN job with slots 1 and 2 mapped was charged entirely to slot 1, by 3.0.0b5
+  and b6 alike. During the job the ACE's loaded slot (`sensor.…_ace_loaded_slot`, from LAN `multiColorBox` reports) alternated
+  1 → 2 → 1 … eleven times, matching the file's colour changes, so the printer does say which slot is feeding.
+- **Not yet specified.** Before the behaviour is written, the specification team will capture the raw LAN `print` reports of a multi-colour
+  job, to see whether they carry the job's per-material breakdown or per-slot usage. Without one, the split would have to come from the
+  feeding slot over time, which is only a rough proxy for grams.
