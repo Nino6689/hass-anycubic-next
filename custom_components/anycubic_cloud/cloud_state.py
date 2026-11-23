@@ -201,10 +201,13 @@ def _apply_print(printer: Printer, cloud: CloudData, update: PrintUpdate) -> Non
         cloud.download_progress = update.download_progress
     if update.slice_param is not None:
         # A ``getSliceParam`` reply: its breakdown serves the job it names,
-        # or the running job when it names none (Beta 6, D26).
+        # or, when it names none, the job running now and no later one
+        # (Beta 6, D26).
         cloud.slice_param = update.slice_param
         task = update.task_id
-        cloud.slice_param_task = task if task is not None and task >= 0 else None
+        if task is None or task < 0:
+            task = printer.job_task_id
+        cloud.slice_param_task = task
     state = printer.state
     job_id = printer.job_task_id
     # Job fields only for the known job; a report for another task waits for

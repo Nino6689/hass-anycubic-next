@@ -11,9 +11,10 @@ become the last job's.
 Stored apart from the filament ledger (whose 2.x shape is fixed, COMPAT §6)
 in its own store, so a restart mid-print keeps the job's totals:
 
-    {printers: {"<printer id>": {job: {key, energy_kwh, cost, priced} | null,
+    {printers: {"<printer id>": {job: {task, name, energy_kwh, cost, priced}
+                                      | null,
                                  last: {energy_kwh, cost} | null}},
-     meter_kwh: <last reading> | null}
+     meter: <the meter's entity id>, meter_kwh: <its last reading> | null}
 """
 
 from __future__ import annotations
@@ -81,13 +82,22 @@ def reading_kwh(state: State | None) -> float | None:
     return value * factor if factor is not None else None
 
 
-def job_key(printer: Printer) -> str | None:
-    """What tells one job from the next: its number, else its file name."""
+def job_identity(printer: Printer) -> tuple[int | None, str | None]:
+    """What tells one job from the next: its number (when it has one above
+    0) and its file name."""
     task = printer.job_task_id
-    if task is not None and task > 0:
-        return f"id:{task}"
-    name = printer.job_name
-    return f"name:{name}" if name else None
+    return (task if task is not None and task > 0 else None, printer.job_name or None)
+
+
+def same_job(job: Mapping[str, Any], task: int | None, name: str | None) -> bool:
+    """Two numbers decide; else two names; with neither on one side the job
+    goes on (a number or name that arrives later belongs to it)."""
+    stored_task, stored_name = job.get("task"), job.get("name")
+    if stored_task is not None and task is not None:
+        return bool(stored_task == task)
+    if stored_name and name:
+        return bool(stored_name == name)
+    return True
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,7 +163,10 @@ class EnergyMeter:
             self._data = stored
         sensor = self.settings.sensor
         assert sensor is not None
-        if self._data.get("meter_kwh") is None:
+        if self._data.get("meter") != sensor or self._data.get("meter_kwh") is None:
+            # Another meter (or none read yet): a fresh base, never the last
+            # meter's reading.
+            self._data["meter"] = sensor
             self._data["meter_kwh"] = reading_kwh(self.hass.states.get(sensor))
         self._unsubscribe = async_track_state_change_event(
             self.hass, sensor, self._handle_meter
@@ -176,7 +189,7 @@ class EnergyMeter:
         number, else the fixed price; ``None`` when neither is set."""
         if self.settings.price_entity is not None:
             value = _number(self.hass.states.get(self.settings.price_entity))
-            if value is not None and value >= 0:
+            if value is not None:  # a negative tariff is a credit
                 return value
         return self.settings.price if self.settings.price > 0 else None
 
@@ -200,30 +213,35 @@ class EnergyMeter:
         self._seen.add(printer.printer_id)
         record = self._record(printer.printer_id)
         job = record.get("job")
-        key = job_key(printer)
+        task, name = job_identity(printer)
         changed = False
         if not printer.job_in_progress:
             if isinstance(job, dict):
                 self._finish(record, job)
                 changed = True
         elif not isinstance(job, dict):
-            self._start(record, key)
+            self._start(record, task, name)
             changed = True
-        elif job.get("key") is None and key is not None:
-            job["key"] = key
-            changed = True
-        elif key is not None and job.get("key") != key:
+        elif not same_job(job, task, name):
             # Another job runs now: the one stored ended unseen.
             self._finish(record, job)
-            self._start(record, key)
+            self._start(record, task, name)
             changed = True
+        else:
+            for field, value in (("task", task), ("name", name)):
+                if value is not None and job.get(field) is None:
+                    job[field] = value
+                    changed = True
         if changed:
             self._save()
 
-    def _start(self, record: dict[str, Any], key: str | None) -> None:
+    def _start(
+        self, record: dict[str, Any], task: int | None, name: str | None
+    ) -> None:
         price = self.price()
         record["job"] = {
-            "key": key,
+            "task": task,
+            "name": name,
             "energy_kwh": 0.0,
             "cost": 0.0 if price is not None else None,
             "priced": price is not None,
@@ -262,7 +280,7 @@ class EnergyMeter:
             record = self._record(printing[0].printer_id)
             job = record.get("job")
             if not isinstance(job, dict):
-                self._start(record, job_key(printing[0]))
+                self._start(record, *job_identity(printing[0]))
                 job = record["job"]
             job["energy_kwh"] = (_float(job.get("energy_kwh")) or 0.0) + rise
             price = self.price()

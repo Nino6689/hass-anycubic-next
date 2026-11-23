@@ -385,6 +385,8 @@ class FilamentLedger:
             elif job_id is not None and running.job_id is None:
                 running.job_id = job_id  # the number arrived later (G9)
             if shares := printer.job_paint_shares:
+                if shares.keys() != running.shares.keys():
+                    running.slot_map = None  # another breakdown: match afresh
                 running.shares = shares
                 if (slot_map := printer.job_slot_map) is not None:
                     running.slot_map = slot_map
@@ -451,7 +453,12 @@ class FilamentLedger:
         #    is not a slot number; without one it cannot be attributed.
         split: dict[int, float]
         slot_map = running.slot_map
-        if shares and len(shares) > 1 and slot_map is not None:
+        if (
+            shares
+            and len(shares) > 1
+            and slot_map is not None
+            and slot_map.keys() == shares.keys()
+        ):
             split = {}
             for index, share in shares.items():
                 target = slot_map[index]

@@ -912,8 +912,8 @@ class Printer:
         if cloud is None or cloud.slice_param is None or self.job is None:
             return ()
         task = cloud.slice_param_task
-        if task is not None and task >= 0 and task != self.job_task_id:
-            return ()
+        if task != self.job_task_id:
+            return ()  # another job's, or one bound to no job and now one runs
         return cloud.slice_param.paint_infos
 
     @property

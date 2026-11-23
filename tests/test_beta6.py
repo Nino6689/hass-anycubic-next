@@ -44,8 +44,9 @@ from custom_components.anycubic_cloud.const import DOMAIN
 from custom_components.anycubic_cloud.energy import (
     EnergyMeter,
     EnergySettings,
-    job_key,
+    job_identity,
     reading_kwh,
+    same_job,
 )
 from custom_components.anycubic_cloud.filament import grams_from_length
 from custom_components.anycubic_cloud.model import paint_slot_map
@@ -937,10 +938,15 @@ async def test_d31_helpers(hass: HomeAssistant) -> None:
     hass.states.async_set("sensor.x", "3")
     assert reading_kwh(hass.states.get("sensor.x")) is None
     assert reading_kwh(None) is None
-    assert job_key(_stub(1, True, 5)) == "id:5"
-    assert job_key(_stub(1, True, -1)) == "name:part.gcode"
-    nameless = SimpleNamespace(job_task_id=None, job_name=None)
-    assert job_key(nameless) is None  # type: ignore[arg-type]
+    assert job_identity(_stub(1, True, 5)) == (5, "part.gcode")
+    assert job_identity(_stub(1, True, -1)) == (None, "part.gcode")
+    nameless = SimpleNamespace(job_task_id=None, job_name="")
+    assert job_identity(nameless) == (None, None)  # type: ignore[arg-type]
+    assert same_job({"task": 5, "name": "a"}, 5, "b")
+    assert not same_job({"task": 5, "name": "a"}, 6, "a")
+    assert same_job({"task": None, "name": "a"}, 6, "a")
+    assert not same_job({"task": None, "name": "a"}, 6, "b")
+    assert same_job({"task": None, "name": None}, 6, "b")
     settings = EnergySettings.from_options({"energy_price_per_kwh": "x"})
     assert settings == EnergySettings(None, 0.0, None)
     assert EnergySettings.from_options({"energy_price_per_kwh": -3}).price == 0.0
@@ -966,4 +972,109 @@ async def test_d31_meter_without_a_first_reading(hass: HomeAssistant) -> None:
     await _settle(hass)
     assert meter.job_energy(1) == pytest.approx(0.5)
     assert meter.job_cost(1) is None
+    await meter.async_shutdown()
+
+
+# -- Review follow-ups (PR #13) ---------------------------------------------------
+
+
+async def test_d26_untagged_reply_is_not_inherited_by_the_next_job(
+    hass: HomeAssistant, cloud: FakeCloud
+) -> None:
+    cloud.jobs = [cp.job(slice_param=json.dumps({}))]
+    entry = await _cloud(hass)
+    printer = entry.runtime_data.primary.printer
+    untagged = {k: v for k, v in SLICE_REPLY.items() if k != "taskid"}
+    cloud.feed(cp.mqtt("print", "getSliceParam", "done", untagged))
+    await _settle(hass)
+    assert len(printer.job_paints) == 2
+    # The next job has no breakdown of its own: it gets none, not the last one's.
+    cloud.jobs = [cp.job(id=cp.JOB_ID + 1, slice_param=json.dumps({}))]
+    await _poll(entry)
+    await _settle(hass)
+    assert printer.job_task_id == cp.JOB_ID + 1
+    assert printer.job_paints == ()
+
+
+async def test_d29_a_changed_breakdown_drops_the_old_slot_map(
+    hass: HomeAssistant, cloud: FakeCloud
+) -> None:
+    """A later breakdown with another material that no slot holds: the old
+    match is not used (it would not cover it); split by paint_index."""
+    cloud.jobs = [
+        cp.job(slice_param=_slice(_paint(0, 30, PINK3), _paint(1, 10, WHITE)))
+    ]
+    entry = await _cloud(hass)
+    printer = entry.runtime_data.primary.printer
+    assert printer.job_slot_map == {0: 3, 1: 0}
+    cloud.jobs = [
+        cp.job(
+            slice_param=_slice(
+                _paint(0, 30, PINK3), _paint(1, 10, WHITE), _paint(2, 40, (1, 2, 3))
+            )
+        )
+    ]
+    await _poll(entry)
+    await _settle(hass)
+    await _finish(hass, entry, cloud)
+    assert _used(entry, 0) == _grams(30 / 80)
+    assert _used(entry, 1) == _grams(10 / 80)
+    assert _used(entry, 2) == _grams(40 / 80)
+    assert _used(entry, 3) == 0.0
+
+
+async def test_d31_negative_price_is_a_credit(
+    hass: HomeAssistant, cloud: FakeCloud
+) -> None:
+    hass.states.async_set(PRICE, "-0.05")
+    entry = await _energy_entry(
+        hass, energy_price_per_kwh=0.3, energy_price_entity=PRICE
+    )
+    _meter(hass, 102.0)
+    await _settle(hass)
+    assert entry.runtime_data.energy.job_cost(cp.PRINTER_ID) == pytest.approx(-0.1)
+
+
+async def test_d31_another_meter_starts_from_its_own_reading(
+    hass: HomeAssistant, cloud: FakeCloud
+) -> None:
+    entry = await _energy_entry(hass, energy_price_per_kwh=1.0)
+    _meter(hass, 100.5)
+    await _settle(hass)
+    # Switch to another plug that already reads more than the old one did.
+    hass.states.async_set(
+        "sensor.other_plug",
+        "102.0",
+        {"unit_of_measurement": "kWh", "device_class": "energy"},
+    )
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "energy_sensor": "sensor.other_plug"}
+    )
+    await hass.config_entries.async_reload(entry.entry_id)
+    await _settle(hass)
+    hass.states.async_set(
+        "sensor.other_plug",
+        "102.1",
+        {"unit_of_measurement": "kWh", "device_class": "energy"},
+    )
+    await _settle(hass)
+    assert entry.runtime_data.energy.job_energy(cp.PRINTER_ID) == pytest.approx(0.6)
+
+
+async def test_d31_a_named_job_keeps_its_totals_when_its_number_arrives(
+    hass: HomeAssistant,
+) -> None:
+    printers = [_stub(1, True, None)]
+    meter = EnergyMeter(
+        hass, "entry3", {"energy_sensor": METER}, lambda: printers, lambda: None
+    )
+    _meter(hass, 10.0)
+    await meter.async_load()
+    meter.update(printers[0])
+    _meter(hass, 10.5)
+    await _settle(hass)
+    printers[0] = _stub(1, True, 42)  # same file, its number now known
+    meter.update(printers[0])
+    assert meter.job_energy(1) == pytest.approx(0.5)
+    assert meter.last_job_energy(1) is None
     await meter.async_shutdown()
