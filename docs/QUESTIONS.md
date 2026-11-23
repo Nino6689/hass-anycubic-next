@@ -272,9 +272,10 @@ Interim choices are in place; each can change without touching stored data.
 
 **B6-Q1. D26: a `getSliceParam` reply for another task.** The reply names
 its task (`taskid`). **Interim choice** (`model.Printer.job_paints`): its
-breakdown is used only while the running job has that number, or when the
-reply names no task; the job record's own `paint_infos` win whenever they
-are present. Confirm.
+breakdown is used only while the running job has that number; a reply that
+names no task is bound to the job running when it arrives (never a later
+one). The job record's own `paint_infos` win whenever they are present.
+Confirm.
 
 **B6-Q2. D27: timings.** "Up to a few seconds" and "a small number of
 times" are not given as numbers. **Interim choice**
@@ -324,6 +325,9 @@ rename is wanted for existing installs.
   state class either.
 - "Exactly one printer printing" counts only printers whose state has been
   read since setup.
+- A negative number from the price entity is used as is (a credit), since
+  the entity wins "whenever it reads a number"; the fixed price is 0 or more.
+- Changing the energy sensor starts from the new meter's own reading.
 - `last_job_total_cost` exists only with a meter configured; it adds the
   ledger's last filament cost and the meter's last electricity cost, which
   are the same job except right after upgrading.
