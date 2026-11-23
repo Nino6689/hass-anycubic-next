@@ -23,6 +23,7 @@ from anycubic_cloud_client import (
     CredentialsRejectedError,
     Job,
     JobDetail,
+    KinesisCredentials,
     MqttError,
     PrinterDetail,
     PrinterSummary,
@@ -233,12 +234,16 @@ class FakeClient:
     async def list_cloud_files(self) -> list[CloudFile]:
         return [CloudFile.from_data(f) for f in self.cloud.files]
 
-    async def open_camera(self, printer_id: int) -> CameraCredentials:
+    async def open_camera_stream(
+        self, printer_id: int
+    ) -> CameraCredentials | KinesisCredentials:
         self.cloud.orders.append(("open_camera", (printer_id,), {}))
         reply = self.cloud.camera
         if isinstance(reply, Exception):
             raise reply
-        credentials = CameraCredentials.from_data(reply)
+        credentials = CameraCredentials.from_data(reply) or (
+            KinesisCredentials.from_data(reply)
+        )
         assert credentials is not None
         return credentials
 

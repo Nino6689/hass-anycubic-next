@@ -331,19 +331,32 @@ async def _options(hass: HomeAssistant, entry: MockConfigEntry, step: str) -> An
 async def test_options_menu(hass: HomeAssistant, printer: MockPrinter) -> None:
     entry = await setup_entry(hass, lan_entry())
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["menu_options"] == ["drying", "local", "card_config", "debug"]
+    assert result["menu_options"] == [
+        "drying",
+        "local",
+        "card_config",
+        "energy",
+        "debug",
+    ]
 
     printer.connect_payloads = [payloads.info(), payloads.peripherals(ace_fitted=0)]
     await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done(wait_background_tasks=True)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     # G21: no drying presets for a printer known to have no ACE.
-    assert result["menu_options"] == ["local", "card_config", "debug"]
+    assert result["menu_options"] == ["local", "card_config", "energy", "debug"]
 
     cloud = cloud_entry(lan=False)
     cloud.add_to_hass(hass)
     result = await hass.config_entries.options.async_init(cloud.entry_id)
-    assert result["menu_options"] == ["mqtt", "drying", "local", "card_config", "debug"]
+    assert result["menu_options"] == [
+        "mqtt",
+        "drying",
+        "local",
+        "card_config",
+        "energy",
+        "debug",
+    ]
 
 
 async def test_options_drying(hass: HomeAssistant, printer: MockPrinter) -> None:

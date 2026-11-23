@@ -219,11 +219,12 @@ async def test_ace_entities_wait_for_the_ace(
     stop = registry.async_get_entity_id(
         "button", DOMAIN, f"{payloads.MAC_UID}-secondary_drying_stop"
     )
-    assert stop == "button.anycubic_kobra_s1_ace_2_secondary_drying_stop"
+    # 40002 is the ACE 2 Pro (Beta 6, D30).
+    assert stop == "button.anycubic_kobra_s1_ace_2_pro_2_secondary_drying_stop"
     second = find_device(hass, f"None-{payloads.PRINTER_ID}-ace1")
     assert second is not None
-    assert second.name == "Anycubic Kobra S1 ACE 2"
-    assert second.model == "ACE"
+    assert second.name == "Anycubic Kobra S1 ACE 2 Pro 2"
+    assert second.model == "ACE 2 Pro"
 
 
 async def test_ace_unplugged_keeps_entities(

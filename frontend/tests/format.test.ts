@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   computeEta,
   convertTemperature,
+  dryingElapsedPercent,
   dryingRemainingPercent,
   formatClock,
   formatEta,
@@ -111,6 +112,17 @@ describe("money, grams, percent", () => {
     expect(formatPercent(12.34, 1)).toBe("12.3%");
     expect(formatGrams(undefined)).toBe("—");
   });
+  it("drying elapsed share fills the card's bar (D32)", () => {
+    // Seven minutes into a six-hour dry: nearly empty, not nearly full.
+    expect(dryingElapsedPercent(353, 360)).toBeCloseTo(1.94, 2);
+    expect(dryingElapsedPercent(30, 120)).toBe(75);
+    expect(dryingElapsedPercent(0, 120)).toBe(100);
+    expect(dryingElapsedPercent(200, 120)).toBe(0);
+    expect(dryingElapsedPercent(30, 0)).toBeUndefined();
+    expect(dryingElapsedPercent(undefined, 120)).toBeUndefined();
+    expect(dryingElapsedPercent(30, undefined)).toBeUndefined();
+  });
+
   it("drying remaining share", () => {
     expect(dryingRemainingPercent(30, 120)).toBe(25);
     expect(dryingRemainingPercent(30, 0)).toBeUndefined();

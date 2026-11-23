@@ -148,6 +148,15 @@ export function titleCase(text: string | undefined): string {
     .join(" ");
 }
 
+/**
+ * Share of the drying time already done, 0–100: elapsed ÷ total, like the
+ * print bar (Beta 6, D32). The card's drying bar fills as drying goes on.
+ */
+export function dryingElapsedPercent(remaining: number | undefined, total: number | undefined): number | undefined {
+  if (remaining === undefined || total === undefined || !(total > 0)) return undefined;
+  return clampPercent(((total - remaining) / total) * 100);
+}
+
 /** Share of the drying time still to go, 0–100 (DECISIONS, frontend 9). */
 export function dryingRemainingPercent(remaining: number | undefined, total: number | undefined): number | undefined {
   if (remaining === undefined || total === undefined || !(total > 0)) return undefined;

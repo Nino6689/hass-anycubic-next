@@ -248,8 +248,10 @@ def _feed(source: FeedSource, channel: int, **fields: Any) -> FilamentFeed:
         # A Kobra X with an ACE: unchanged until the mapping is confirmed.
         (_feed(FeedSource.ACE, 1, unit_no=1), 1, 20030, True, None),
         (_feed(FeedSource.PRINTER_FEEDER, 1), 1, 20030, True, None),
-        (_feed(FeedSource.PRINTER_FEEDER, 1), 2, 20030, False, None),
-        (_feed(FeedSource.ACE, 2, unit_no=1), 2, 20030, True, None),
+        # A Kobra X with more boxes: box 0 is its feeder, unit U is box U
+        # (Beta 6, D30); anything else names no box.
+        (_feed(FeedSource.PRINTER_FEEDER, 1), 2, 20030, False, (0, 0)),
+        (_feed(FeedSource.ACE, 2, unit_no=1), 2, 20030, True, (1, 1)),
         (_feed(FeedSource.CURRENT_FILAMENT, 1, box=0), 2, 20030, False, None),
         # Every box an ACE (an S1 with two): unit U is ACE U.
         (_feed(FeedSource.ACE, 3, unit_no=2), 2, 20025, True, (1, 2)),
@@ -332,8 +334,9 @@ async def test_d10_kobra_x_with_two_boxes_ignores_the_bare_channel(
     cloud.printers[cp.PRINTER_ID]["machine_type"] = 20030
     cloud.printers[cp.PRINTER_ID]["multi_color_box"] = [cp.ace_box(0), cp.ace_box(1)]
     await _cloud(hass)
-    first = f"sensor.{C}_ace_pro_ace_loaded_slot"
-    second = f"sensor.{C}_ace_pro_2_secondary_ace_loaded_slot"
+    # Box 0 is the Kobra X's feeder, the ACE comes after (Beta 6, D30).
+    first = f"sensor.{C}_feeder_ace_loaded_slot"
+    second = f"sensor.{C}_ace_pro_secondary_ace_loaded_slot"
     for channel in (6, 3):
         cloud.feed(cp.mqtt("print", "update", "updated", {"channel_no": channel}))
         await _settle(hass)
@@ -577,7 +580,7 @@ async def test_d13_kobra_x_with_an_ace(hass: HomeAssistant, cloud: FakeCloud) ->
     await _cloud(hass)
     cloud.feed(_current("0-3"))
     await _settle(hass)
-    assert _state(hass, f"sensor.{C}_ace_pro_ace_loaded_slot") == "2"
+    assert _state(hass, f"sensor.{C}_feeder_ace_loaded_slot") == "2"
 
 
 async def test_d13_lan_current_filament_keeps_the_holder(

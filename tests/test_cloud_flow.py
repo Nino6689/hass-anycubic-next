@@ -464,7 +464,14 @@ async def test_options_menu_of_a_cloud_entry(
 ) -> None:
     entry = await setup_entry(hass, account_entry())
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["menu_options"] == ["mqtt", "drying", "local", "card_config", "debug"]
+    assert result["menu_options"] == [
+        "mqtt",
+        "drying",
+        "local",
+        "card_config",
+        "energy",
+        "debug",
+    ]
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": "mqtt"}
     )
